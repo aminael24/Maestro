@@ -1,0 +1,372 @@
+/* ═══════════════════════════════════════════════════════════════
+   Maestro – Keycloak Theme CSS
+   Thème sombre / dégradé violet-bleu
+   Cohérent avec le frontend React (LoginPage, RegisterPage, etc.)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Reset & Base ──────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #0b1020;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Background gradient ───────────────────────────────────── */
+.maestro-body {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.maestro-bg-gradient {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(8, 12, 25, 0.95) 0%,
+    rgba(48, 35, 115, 0.40) 50%,
+    rgba(8, 12, 25, 0.95) 100%
+  );
+  z-index: 0;
+}
+
+/* ── Layout : branding + card ──────────────────────────────── */
+.maestro-layout {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 48px;
+  padding: 48px 64px;
+}
+
+/* Centered layout for error / info pages */
+.maestro-center-layout {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+/* ── Branding (left side) ──────────────────────────────────── */
+.maestro-branding {
+  max-width: 560px;
+}
+
+.maestro-logo-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.35);
+}
+
+.maestro-logo-letter {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* Fallback logo image if present */
+.maestro-logo {
+  width: 90px;
+  margin-bottom: 18px;
+}
+
+.maestro-brand-title {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  margin: 0 0 12px;
+  background: linear-gradient(135deg, #fff 30%, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.maestro-brand-subtitle {
+  font-size: 18px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.75);
+  max-width: 480px;
+  margin-bottom: 16px;
+}
+
+.maestro-brand-hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Card ──────────────────────────────────────────────────── */
+.maestro-card {
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 24px;
+  padding: 40px 36px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.30);
+}
+
+.maestro-card-narrow {
+  max-width: 420px;
+  text-align: center;
+}
+
+.maestro-card-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.maestro-card-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.50);
+  margin: 0 0 28px;
+}
+
+/* ── Form fields ───────────────────────────────────────────── */
+.maestro-field {
+  margin-bottom: 18px;
+}
+
+.maestro-field label {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.maestro-field input[type="text"],
+.maestro-field input[type="password"],
+.maestro-field input[type="email"] {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.maestro-field input:focus {
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.maestro-field input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Remember me / Forgot password row ─────────────────────── */
+.maestro-remember-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.maestro-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.60);
+  cursor: pointer;
+}
+
+.maestro-checkbox-label input[type="checkbox"] {
+  accent-color: #7c3aed;
+  width: 16px;
+  height: 16px;
+}
+
+.maestro-forgot-link {
+  color: #a78bfa;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+
+.maestro-forgot-link:hover {
+  color: #c4b5fd;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.maestro-actions {
+  margin-top: 8px;
+}
+
+.maestro-btn-primary {
+  display: block;
+  width: 100%;
+  padding: 15px 18px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.30);
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-align: center;
+  text-decoration: none;
+}
+
+.maestro-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(124, 58, 237, 0.40);
+}
+
+.maestro-btn-primary:active {
+  transform: translateY(0);
+}
+
+.maestro-btn-link {
+  display: inline-block;
+  width: auto;
+  padding: 12px 28px;
+}
+
+/* ── Register link ─────────────────────────────────────────── */
+.maestro-register-text {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.50);
+}
+
+.maestro-register-link {
+  color: #a78bfa;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.maestro-register-link:hover {
+  color: #c4b5fd;
+}
+
+/* ── Alert / Error messages ────────────────────────────────── */
+.maestro-alert {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.maestro-alert-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.30);
+  color: #fca5a5;
+}
+
+.maestro-alert-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.30);
+  color: #fcd34d;
+}
+
+.maestro-alert-success {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.30);
+  color: #86efac;
+}
+
+/* ── Error page icon ───────────────────────────────────────── */
+.maestro-error-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 20px;
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .maestro-layout {
+    grid-template-columns: 1fr;
+    padding: 32px 20px;
+    gap: 32px;
+  }
+
+  .maestro-branding {
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .maestro-brand-title {
+    font-size: 40px;
+  }
+
+  .maestro-brand-subtitle {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .maestro-card {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .maestro-card {
+    padding: 28px 20px;
+    border-radius: 18px;
+  }
+
+  .maestro-brand-title {
+    font-size: 32px;
+  }
+
+  .maestro-logo-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .maestro-logo-letter {
+    font-size: 28px;
+  }
+}
+
+/* ── Keycloak base overrides ───────────────────────────────── */
+/* Cache les éléments par défaut de Keycloak qui pourraient percer */
+#kc-header,
+#kc-header-wrapper,
+.kc-logo-text {
+  display: none !important;
+}

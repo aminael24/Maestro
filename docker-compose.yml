@@ -1,0 +1,183 @@
+services:
+  # ── Keycloak DB ────────────────────────────────────────────
+  keycloak-db:
+    image: postgres:16
+    container_name: keycloak-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - maestro-net
+
+  # ── Keycloak ───────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.5
+    container_name: keycloak
+    restart: always
+    depends_on:
+      - keycloak-db
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      # Force Keycloak to always use localhost:8080 as the issuer URL.
+      # This ensures the token "iss" claim matches what both the browser
+      # AND the api-gateway container see, resolving the 401 issuer mismatch.
+      KC_HOSTNAME: "localhost"
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/themes:/opt/keycloak/themes
+    networks:
+      - maestro-net
+
+  # ── User DB ────────────────────────────────────────────────
+  user-db:
+    image: postgres:16
+    container_name: user-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${USER_DB_NAME}
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - maestro-net
+
+  # ── API Gateway ────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./services/ApiGateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: always
+    depends_on:
+      - keycloak
+      - user-db
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+
+      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+      KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
+      KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
+
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
+      KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
+
+      USER_DB_HOST: ${USER_DB_HOST}
+      USER_DB_PORT: ${USER_DB_PORT}
+      USER_DB_DATABASE: ${USER_DB_DATABASE}
+      USER_DB_USERNAME: ${USER_DB_USERNAME}
+      USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
+      WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+    ports:
+      - "5000:8080"
+    volumes:
+      - uploads_data:/app/wwwroot/uploads
+    networks:
+      - maestro-net
+
+  # ── EF Migrations (one-shot) ───────────────────────────────
+  api-gateway-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: api-gateway-migrations
+    working_dir: /src
+    volumes:
+      - ./services/ApiGateway:/src
+    depends_on:
+      - user-db
+    environment:
+      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+      KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
+      KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
+      KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
+      USER_DB_HOST: ${USER_DB_HOST}
+      USER_DB_PORT: ${USER_DB_PORT}
+      USER_DB_DATABASE: ${USER_DB_DATABASE}
+      USER_DB_USERNAME: ${USER_DB_USERNAME}
+      USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
+      WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
+    networks:
+      - maestro-net
+    command: ["dotnet", "ef", "database", "update"]
+
+  # ── pgAdmin ────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - maestro-net
+
+  # ── Frontend ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+      VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM}
+      VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
+      VITE_FRONTEND_URL: ${VITE_FRONTEND_URL}
+      VITE_API_GATEWAY_URL: ${VITE_API_GATEWAY_URL}
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      - api-gateway
+    networks:
+      - maestro-net
+
+volumes:
+  keycloak_db_data:
+  user_db_data:
+  pgadmin_data:
+  uploads_data:
+
+networks:
+  maestro-net:
+    driver: bridge
