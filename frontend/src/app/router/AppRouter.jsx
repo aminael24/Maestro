@@ -3,6 +3,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import LoginPage from "../../pages/Auth/LoginPage";
 import RegisterPage from "../../pages/Auth/RegisterPage";
 import AuthCallbackPage from "../../pages/Auth/AuthCallbackPage";
+import MainLayout from "../../components/Layout/MainLayout";
+import DashboardPage from "../../pages/DashboardPage";
+import ProjectsPage from "../../pages/ProjectsPage";
 import {
   getAccessToken,
   clearTokens,
@@ -54,71 +57,9 @@ function WorkspacePage() {
   }, [scheduleRefresh]);
 
   return (
-    <div style={workspaceStyles.page}>
-      <header style={workspaceStyles.header}>
-        <h1 style={workspaceStyles.title}>🎼 Workspace Maestro</h1>
-        <button onClick={handleLogout} style={workspaceStyles.logoutBtn}>
-          Déconnexion
-        </button>
-      </header>
-      <main style={workspaceStyles.main}>
-        <div style={workspaceStyles.card}>
-          <h2>Bienvenue !</h2>
-          <p>Vous êtes connecté avec succès via Keycloak OIDC + PKCE.</p>
-          <p
-            style={{
-              color: "rgba(255,255,255,0.5)",
-              fontSize: "14px",
-              marginTop: "12px",
-            }}
-          >
-            🔒 Token en mémoire — refresh_token en cookie HttpOnly.
-          </p>
-        </div>
-      </main>
-    </div>
+    <MainLayout />
   );
 }
-
-const workspaceStyles = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0b1020 0%, #1a1040 100%)",
-    color: "#fff",
-    fontFamily: "Inter, system-ui, sans-serif",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "20px 32px",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-  },
-  title: { margin: 0, fontSize: "24px", fontWeight: 700 },
-  logoutBtn: {
-    padding: "10px 20px",
-    borderRadius: "12px",
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#fff",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: 600,
-  },
-  main: {
-    display: "grid",
-    placeItems: "center",
-    padding: "60px 32px",
-  },
-  card: {
-    padding: "40px",
-    borderRadius: "24px",
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    textAlign: "center",
-    maxWidth: "500px",
-  },
-};
 
 // ═══════════════════════════════════════════════════════════════
 //  ProtectedRoute – tente un silent refresh si le token mémoire
@@ -160,7 +101,7 @@ function ProtectedRoute({ children }) {
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        <p style={{ opacity: 0.6 }}>Vérification de la session...</p>
+        <p style={{ opacity: 0.6 }}>Verifying session...</p>
       </div>
     );
   }
@@ -184,6 +125,7 @@ export default function AppRouter() {
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        
         <Route
           path="/workspace"
           element={
@@ -191,7 +133,13 @@ export default function AppRouter() {
               <WorkspacePage />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/workspace" replace />} />
       </Routes>
     </BrowserRouter>
   );

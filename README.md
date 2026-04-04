@@ -17,11 +17,15 @@ Keycloak (:8080)
   ├── Client: maestro-frontend (PUBLIC, PKCE activé)
   └── Client: maestro-api-gateway (confidentiel, pour admin API et token exchange)
 
+Workspace Service (:8080 - Interne)
+  ├── API REST de gestion des projets
+  └── Persistence: PostgreSQL (workspace-db)
+
 API Gateway (.NET :5000)
   ├── POST /auth/register ... Crée user Keycloak + user local
   ├── POST /auth/callback ... Échange code OIDC + PKCE → tokens
   ├── GET  /auth/me ......... JWT protégé, retourne profil
-  └── Proxy workspace/deploy
+  └── Proxy vers Workspace Service (/api/projects) et Deploy Service
 ```
 
 ## Flux d'authentification

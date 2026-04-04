@@ -1,0 +1,114 @@
+.project-form {
+  display: block; /* 🔥 IMPORTANT */
+}
+
+.project-form__title {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+/* GROUP */
+.project-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* LABEL */
+.project-form__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* INPUT */
+.project-form__input,
+.project-form__textarea {
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(8,58,79,0.14);
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  background: #ffffff;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: 0.2s;
+}
+
+.project-form__input::placeholder,
+.project-form__textarea::placeholder {
+  color: var(--text-hint);
+}
+
+.project-form__input:focus,
+.project-form__textarea:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(72,126,140,0.12);
+}
+
+.project-form__textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+/* SELECT */
+select.project-form__input {
+  cursor: pointer;
+  appearance: none;
+  background-position: right 1rem center;
+  padding-right: 2rem;
+}
+
+/* CHECKBOX */
+.project-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* ACTIONS */
+.project-form__actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* BUTTON */
+.project-form__button {
+  flex: 1;
+  padding: 0.9rem;
+  font-size: 0.9rem;
+  border-radius: 0.6rem;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.project-form__button--cancel {
+  background: rgba(8,58,79,0.07);
+}
+
+.project-form__button:not(.project-form__button--cancel) {
+  background: var(--navy);
+  color: white;
+}
+
+.project-form__button:hover {
+  transform: translateY(-1px);
+}
+
+.project-form__error {
+  background: #fde8e8;
+  color: #a32020;
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+}

@@ -1,0 +1,18 @@
+.main-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.main-layout__content {
+  margin-left: 220px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden; /* 🔥 IMPORTANT */
+}
+
+.page-wrapper {
+  flex: 1;
+  overflow-y: auto; /* 🔥 SCROLL PAGE */
+}

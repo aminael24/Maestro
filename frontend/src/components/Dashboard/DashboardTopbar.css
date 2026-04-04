@@ -1,0 +1,106 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 64px;
+  background: #ffffff; /* même fond que le dashboard */
+  border-bottom: 1px solid rgba(8,58,79,0.09);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar__brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-dark);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.topbar__search .search-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px; height: 16px;
+  color: var(--text-hint);
+  pointer-events: none;
+}
+
+.topbar__search input {
+  padding: 8px 14px 8px 36px;
+  border: 1px solid rgba(8,58,79,0.14);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.7);
+  font-size: 13px;
+  color: var(--text-mid);
+  width: 280px;
+  outline: none;
+  transition: all 0.22s;
+  font-family: var(--font-body);
+}
+
+.topbar__search input::placeholder { color: var(--text-hint); }
+
+.topbar__search input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(72,126,140,0.12);
+  background: #fff;
+}
+
+.topbar__icon-btn {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(8,58,79,0.12);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.topbar__icon-btn svg {
+  width: 17px; height: 17px;
+  color: var(--text-mid);
+}
+
+.topbar__icon-btn:hover {
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+.topbar__icon-btn:hover svg { color: white; }
+
+.topbar__create-btn {
+  padding: 9px 18px;
+  background: var(--navy);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(8,58,79,0.2);
+}
+
+.topbar__create-btn:hover {
+  background: var(--navy-mid);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(8,58,79,0.25);
+}
