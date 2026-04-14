@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Maestro — Connexion</title>
+    <title>Maestro — Créer un compte</title>
     <link rel="stylesheet" href="${url.resourcesPath}/css/styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,6 @@
 <div class="orb orb-2"></div>
 <div class="orb orb-3"></div>
 
-<!-- ═══ Particles ═══ -->
 <div class="particles">
   <span class="particle particle--gold"></span>
   <span class="particle particle--aqua"></span>
@@ -60,7 +59,6 @@
   <span class="particle particle--aqua"></span>
 </div>
 
-<!-- ═══ Connection Lines ═══ -->
 <div class="connection-lines">
   <svg viewBox="0 0 1920 1080" preserveAspectRatio="none">
     <line x1="150" y1="200" x2="350" y2="350" />
@@ -76,24 +74,20 @@
   </svg>
 </div>
 
-<!-- ═══ Login Card ═══ -->
+<!-- ═══ Register Card ═══ -->
 <div class="login-container">
   <div class="login-card">
     <div class="brand">
       <div class="brand-icon">
-        <img src="${url.resourcesPath}/img/logo.png" alt="Maestro logo" />
+        <img src="${url.resourcesPath}/img/maestro-logo.svg" alt="Maestro logo" />
       </div>
-      <h1>Maestro</h1>
-      <p>DevSecOps</p>
+      <h1>DevSecOps</h1>
+      <p>Plateforme Microservices</p>
     </div>
 
     <div class="tabs">
-      <button class="tab active" type="button">Connexion</button>
-      <#if realm.registrationAllowed>
-        <a class="tab tab-link" href="${url.registrationUrl}">Créer un compte</a>
-      <#else>
-        <button class="tab" type="button" disabled>Créer un compte</button>
-      </#if>
+      <a class="tab tab-link" href="${url.loginUrl}">Connexion</a>
+      <button class="tab active" type="button">Créer un compte</button>
     </div>
 
     <#if message?has_content && (message.type = 'error' || message.type = 'warning')>
@@ -108,9 +102,48 @@
       </div>
     </#if>
 
-    <form id="kc-form-login" action="${url.loginAction}" method="post" autocomplete="on">
+    <form id="kc-register-form" action="${url.registrationAction}" method="post">
+
+      <div class="form-row">
+        <div class="form-group form-group--half">
+          <label for="firstName">Prénom</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--aqua);">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input
+              id="firstName"
+              name="firstName"
+              type="text"
+              value="${(register.formData.firstName!'')}"
+              placeholder="Prénom"
+            />
+          </div>
+        </div>
+
+        <div class="form-group form-group--half">
+          <label for="lastName">Nom</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--aqua);">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input
+              id="lastName"
+              name="lastName"
+              type="text"
+              value="${(register.formData.lastName!'')}"
+              placeholder="Nom"
+            />
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
-        <label for="username">Email</label>
+        <label for="email">Email</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--aqua);">
@@ -118,16 +151,36 @@
             </svg>
           </span>
           <input
-            id="username"
-            name="username"
-            type="text"
-            value="${(login.username!'')}"
-            autocomplete="username"
-            autofocus
+            id="email"
+            name="email"
+            type="email"
+            value="${(register.formData.email!'')}"
+            autocomplete="email"
             placeholder="ingenieur@devsecops.ma"
           />
         </div>
       </div>
+
+      <#if !realm.registrationEmailAsUsername>
+        <div class="form-group">
+          <label for="username">Nom d'utilisateur</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--aqua);">
+                <circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2m-7.07-3.93 1.41-1.41m12.02-12.02 1.41-1.41M1 12h2m18 0h2m-3.93 7.07-1.41-1.41M4.34 4.34 2.93 2.93"/>
+              </svg>
+            </span>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value="${(register.formData.username!'')}"
+              autocomplete="username"
+              placeholder="nom.utilisateur"
+            />
+          </div>
+        </div>
+      </#if>
 
       <div class="form-group">
         <label for="password">Mot de passe</label>
@@ -141,27 +194,40 @@
             id="password"
             name="password"
             type="password"
-            autocomplete="current-password"
+            autocomplete="new-password"
             placeholder="••••••••••"
           />
         </div>
       </div>
 
-      <input type="hidden" id="id-hidden-input" name="credentialId" value="" />
+      <div class="form-group">
+        <label for="password-confirm">Confirmer le mot de passe</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--aqua);">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </span>
+          <input
+            id="password-confirm"
+            name="password-confirm"
+            type="password"
+            autocomplete="new-password"
+            placeholder="••••••••••"
+          />
+        </div>
+      </div>
 
-      <#if realm.rememberMe>
-        <div class="remember-row">
-          <label class="checkbox-label">
-            <input type="checkbox" name="rememberMe" <#if login.rememberMe??>checked</#if> />
-            <span>Se souvenir de moi</span>
-          </label>
+      <#if recaptchaRequired??>
+        <div class="form-group">
+          <div class="g-recaptcha" data-size="compact" data-sitekey="${recaptchaSiteKey}"></div>
         </div>
       </#if>
 
-      <button class="submit-btn" type="submit" name="login">Se connecter</button>
+      <button class="submit-btn" type="submit">Créer mon compte</button>
 
       <div class="footer-link">
-        Mot de passe oublié ? <a href="${url.loginResetCredentialsUrl}">Réinitialiser</a>
+        Déjà un compte ? <a href="${url.loginUrl}">Se connecter</a>
       </div>
     </form>
   </div>

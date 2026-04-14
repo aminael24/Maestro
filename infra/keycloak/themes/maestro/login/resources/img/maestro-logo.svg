@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="grad-teal-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#407E8C"/>
+      <stop offset="100%" stop-color="#A58D66"/>
+    </linearGradient>
+    <linearGradient id="grad-teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#407E8C"/>
+      <stop offset="100%" stop-color="#356A76"/>
+    </linearGradient>
+    <linearGradient id="grad-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#A58D66"/>
+      <stop offset="100%" stop-color="#8B7555"/>
+    </linearGradient>
+    <linearGradient id="grad-inf" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#407E8C"/>
+      <stop offset="45%" stop-color="#6A9EA8"/>
+      <stop offset="55%" stop-color="#B8A07A"/>
+      <stop offset="100%" stop-color="#A58D66"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ═══ OUTER CIRCLE ARC (gap at upper-left ~130° to ~160°) ═══ -->
+  <path d="M 175 88 A 195 195 0 1 1 122 148" 
+    stroke="url(#grad-teal-gold)" stroke-width="24" fill="none" stroke-linecap="round"/>
+
+  <!-- ═══ SWOOSH CURVES (upper & lower, filling the gap) ═══ -->
+  <!-- Upper swoosh: from gap area sweeping inward -->
+  <path d="M 128 152 Q 195 108, 290 88 Q 350 76, 380 86" 
+    stroke="#407E8C" stroke-width="13" fill="none" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Lower swoosh -->
+  <path d="M 102 375 Q 145 425, 225 438 Q 270 442, 280 418" 
+    stroke="url(#grad-teal-gold)" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- Small accent swoosh -->
+  <path d="M 110 332 Q 132 372, 170 392" 
+    stroke="#407E8C" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- ═══ LEFT GEAR TEETH (4 teeth, 190°-260° on circle) ═══ -->
+  <g fill="#407E8C" opacity="0.9">
+    <rect x="55" y="272" width="30" height="16" rx="3" transform="rotate(-10, 70, 280)"/>
+    <rect x="50" y="304" width="30" height="16" rx="3" transform="rotate(-30, 65, 312)"/>
+    <rect x="54" y="336" width="30" height="16" rx="3" transform="rotate(-50, 69, 344)"/>
+    <rect x="66" y="242" width="30" height="16" rx="3" transform="rotate(10, 81, 250)"/>
+  </g>
+
+  <!-- ═══ RIGHT GEAR TEETH (8 teeth, 310°-80° on circle) ═══ -->
+  <g fill="#A58D66" opacity="0.85">
+    <rect x="395" y="108" width="32" height="18" rx="3" transform="rotate(28, 411, 117)"/>
+    <rect x="418" y="140" width="32" height="18" rx="3" transform="rotate(48, 434, 149)"/>
+    <rect x="432" y="178" width="32" height="18" rx="3" transform="rotate(68, 448, 187)"/>
+    <rect x="438" y="218" width="32" height="18" rx="3" transform="rotate(84, 454, 227)"/>
+    <rect x="436" y="258" width="32" height="18" rx="3" transform="rotate(100, 452, 267)"/>
+    <rect x="426" y="296" width="32" height="18" rx="3" transform="rotate(118, 442, 305)"/>
+    <rect x="408" y="332" width="32" height="18" rx="3" transform="rotate(136, 424, 341)"/>
+    <rect x="384" y="362" width="32" height="18" rx="3" transform="rotate(154, 400, 371)"/>
+  </g>
+
+  <!-- ═══ INFINITY SHAPE (figure-8 / lemniscate) ═══ -->
+  <!-- Left loop -->
+  <path d="
+    M 256 232
+    C 228 192, 152 180, 148 242
+    C 144 304, 218 322, 256 278
+  " stroke="url(#grad-teal)" stroke-width="22" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Right loop -->
+  <path d="
+    M 256 232
+    C 284 192, 360 180, 364 242
+    C 368 304, 294 322, 256 278
+  " stroke="url(#grad-gold)" stroke-width="22" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ═══ M LETTER (integrated inside the infinity) ═══ -->
+  <!-- Left pillar of M -->
+  <line x1="188" y1="210" x2="188" y2="300" stroke="#407E8C" stroke-width="14" stroke-linecap="round"/>
+  <!-- Right pillar of M -->
+  <line x1="324" y1="210" x2="324" y2="300" stroke="#A58D66" stroke-width="14" stroke-linecap="round"/>
+  <!-- Left diagonal of M -->
+  <line x1="188" y1="210" x2="256" y2="272" stroke="#407E8C" stroke-width="12" stroke-linecap="round"/>
+  <!-- Right diagonal of M -->
+  <line x1="324" y1="210" x2="256" y2="272" stroke="#A58D66" stroke-width="12" stroke-linecap="round"/>
+
+</svg>
