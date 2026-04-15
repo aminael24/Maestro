@@ -11,8 +11,8 @@
 </head>
 <body>
 
-<!-- ═══ Back to home ═══ -->
-<a href="/" class="back-home">
+<!-- ═══ Back to home → React frontend home ═══ -->
+<a href="http://localhost:5173/" class="back-home">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="m15 18-6-6 6-6"/>
   </svg>
@@ -90,7 +90,8 @@
     <div class="tabs">
       <button class="tab active" type="button">Connexion</button>
       <#if realm.registrationAllowed>
-        <a class="tab tab-link" href="${url.registrationUrl}">Créer un compte</a>
+        <!-- ═══ "Créer un compte" → React register page ═══ -->
+        <a class="tab tab-link" href="http://localhost:5173/auth/register">Créer un compte</a>
       <#else>
         <button class="tab" type="button" disabled>Créer un compte</button>
       </#if>
