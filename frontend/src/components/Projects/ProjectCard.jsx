@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from 'react';
 import './ProjectCard.css';
 import { createPortal } from 'react-dom';
@@ -8,7 +9,7 @@ export function ProjectCard({ project, onDelete }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US');
+    return date.toLocaleDateString('fr-FR');
   };
 
   return (
@@ -25,7 +26,7 @@ export function ProjectCard({ project, onDelete }) {
           <button
             className="project-card__delete"
             onClick={() => setShowConfirm(true)}
-            title="Delete"
+            title="Supprimer"
           >
             ✕
           </button>
@@ -41,14 +42,9 @@ export function ProjectCard({ project, onDelete }) {
           <span className="project-card__date">
             📅 {formatDate(project.dueDate)}
           </span>
-
-          {project.status && (
-            <span
-              className={`project-card__status project-card__status--${project.status}`}
-            >
-              {project.status}
-            </span>
-          )}
+          <span className="project-card__type-badge">
+            {project.type}
+          </span>
         </div>
       </div>
 
@@ -60,14 +56,14 @@ export function ProjectCard({ project, onDelete }) {
         className="confirm-box"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3>Delete Project</h3>
+        <h3>Supprimer le projet</h3>
         <p>
-          Are you sure you want to delete "<strong>{project.name}</strong>"?
+          Êtes-vous sûr de vouloir supprimer "<strong>{project.name}</strong>" ?
         </p>
 
         <div className="confirm-actions">
           <button onClick={() => setShowConfirm(false)}>
-            Cancel
+            Annuler
           </button>
 
             <button
@@ -77,7 +73,7 @@ export function ProjectCard({ project, onDelete }) {
               setShowConfirm(false);
             }}
           >
-            Delete
+            Supprimer
           </button>
             </div>
           </div>

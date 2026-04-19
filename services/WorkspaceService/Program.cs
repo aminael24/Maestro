@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+using Maestro.WorkspaceService.Domain.Entities;
+using Maestro.WorkspaceService.Infrastructure.Persistence;
+using Maestro.WorkspaceService.Application.Services;
+using Maestro.WorkspaceService.Application.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +12,7 @@ builder.Services.AddDbContext<WorkspaceDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddProblemDetails();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 var app = builder.Build();
 
@@ -46,21 +47,11 @@ using (var scope = app.Services.CreateScope())
 app.MapGet("/health", () => Results.Ok("Healthy"));
 
 // ── Internal Projects API ───────────────────────────────────
-app.MapGet("/internal/projects", async (WorkspaceDbContext db, ILogger<Program> logger) =>
+app.MapGet("/internal/projects", async (IProjectService projectService, WorkspaceDbContext db, ILogger<Program> logger) =>
 {
     try
     {
-        var projects = await db.Projects.ToListAsync();
-        if (!projects.Any())
-        {
-            var defaults = new[] {
-                new Project { Name = "App React Native", Description = "Mobile application development", DueDate = "2026-05-15", Status = "active", Type = "Frontend", FrontendFramework = "React", IsDockerEnabled = true },
-                new Project { Name = "ENSA ShareHub", Description = "Collaborative school platform", DueDate = "2026-04-03", Status = "pending", Type = "Fullstack", FrontendFramework = "React", BackendFramework = "Express", Database = "PostgreSQL", IsDockerEnabled = true }
-            };
-            db.Projects.AddRange(defaults);
-            await db.SaveChangesAsync();
-            return Results.Ok(defaults);
-        }
+        var projects = await projectService.GetAllProjectsAsync();
         return Results.Ok(projects);
     }
     catch (Exception ex)
@@ -70,62 +61,31 @@ app.MapGet("/internal/projects", async (WorkspaceDbContext db, ILogger<Program> 
     }
 });
 
-app.MapGet("/internal/projects/{id}", async (int id, WorkspaceDbContext db) =>
+app.MapGet("/internal/projects/{id}", async (int id, IProjectService projectService) =>
 {
-    var project = await db.Projects.FindAsync(id);
+    var project = await projectService.GetProjectByIdAsync(id);
     return project is not null ? Results.Ok(project) : Results.NotFound();
 });
 
-app.MapPost("/internal/projects", async (Project project, WorkspaceDbContext db, ILogger<Program> logger) =>
+app.MapPost("/internal/projects", async (CreateProjectRequest request, IProjectService projectService, ILogger<Program> logger) =>
 {
     try
     {
-        db.Projects.Add(project);
-        await db.SaveChangesAsync();
-        return Results.Created($"/internal/projects/{project.Id}", project);
+        var created = await projectService.CreateProjectAsync(request);
+        return Results.Created($"/internal/projects/{created.Id}", created);
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "Erreur lors de la création du projet");
-        return Results.Problem("Erreur lors de la sauvegarde du projet.");
+        return Results.Problem("Erreur lors de la création du projet.");
     }
 });
 
-app.MapDelete("/internal/projects/{id}", async (int id, WorkspaceDbContext db) =>
+app.MapDelete("/internal/projects/{id}", async (int id, IProjectService projectService) =>
 {
-    var project = await db.Projects.FindAsync(id);
-    if (project is null) return Results.NotFound();
-    db.Projects.Remove(project);
-    await db.SaveChangesAsync();
-    return Results.NoContent();
+    var deleted = await projectService.DeleteProjectAsync(id);
+    return deleted ? Results.NoContent() : Results.NotFound();
 });
 
 app.Run();
-
-// ── Models & Context ────────────────────────────────────────
-public class Project
-{
-    public int Id { get; set; }
-    [Required] public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string DueDate { get; set; } = string.Empty;
-    public string Status { get; set; } = "pending";
-    public string Type { get; set; } = "Fullstack"; // Frontend / Backend / Fullstack
-    public string FrontendFramework { get; set; } = "React";
-    public string BackendFramework { get; set; } = "Express";
-    public string Database { get; set; } = "PostgreSQL";
-    public bool IsDockerEnabled { get; set; } = true;
-}
-
-public class WorkspaceDbContext : DbContext
-{
-    public WorkspaceDbContext(DbContextOptions<WorkspaceDbContext> options) : base(options) { }
-    public DbSet<Project> Projects => Set<Project>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        // Force explicit lowercase table naming to avoid "Relation Projects does not exist"
-        modelBuilder.Entity<Project>().ToTable("projects");
-        base.OnModelCreating(modelBuilder);
-    }
-}
+public partial class Program { } // Déplacé à la fin pour permettre aux usings de rester en haut

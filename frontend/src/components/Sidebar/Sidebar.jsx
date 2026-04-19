@@ -1,25 +1,40 @@
+import React from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { getMe } from '../../services/authService';
 import './Sidebar.css';
+import logoImage from '../../assets/logo.png'; // Importer l'image du logo
 
 const items = [
-  { path: '/workspace/dashboard', label: 'Dashboard', icon: '📊' },
-  { path: '/workspace/projects', label: 'Projects', icon: '📁' },
-  { path: '/workspace/deployments', label: 'Deployments', icon: '🚀' },
-  { path: '/workspace/infrastructure', label: 'Infrastructure', icon: '🧱' },
-  { path: '/workspace/monitoring', label: 'Monitoring', icon: '📈' },
-  { path: '/workspace/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/workspace/dashboard', label: 'Tableau de bord' },
+  { path: '/workspace/projects', label: 'Projets' },
+  { path: '/workspace/deployments', label: 'Déploiements'},
+  { path: '/workspace/infrastructure', label: 'Infrastructure' },
+  { path: '/workspace/monitoring', label: 'Supervision' },
 ];
 
 export default function Sidebar() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem('maestro_access_token');
+      if (token) {
+        try { const data = await getMe(token); setUser(data); } catch (e) { console.error(e); }
+      }
+    };
+    fetchUser();
+  }, []);
+
   return (
     <aside className="sidebarV2">
 
       {/* LOGO */}
       <div className="sidebarV2__logo">
-        <div className="logo-box">A</div>
+        <img src={logoImage} alt="Maestro Logo" className="logo-img" />
         <div>
-          <strong>The Archive</strong>
-          <span>Security Hub</span>
+          <strong>Maestro</strong>
+          <span>DevSecOps</span>
         </div>
       </div>
 
@@ -39,18 +54,12 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* PRO CARD */}
-      <div className="sidebarV2__pro">
-        <p>Unlock advanced features</p>
-        <button>Upgrade Plan</button>
-      </div>
-
       {/* USER */}
       <div className="sidebarV2__user">
-        <div className="avatar">J</div>
+        <div className="avatar">{user ? user.firstName?.charAt(0) : '?'}</div>
         <div>
-          <strong>Julian Thorne</strong>
-          <span>Principal Architect</span>
+          <strong>{user ? `${user.firstName} ${user.lastName}` : 'Connecté'}</strong>
+          <span>{user ? user.username : 'Chargement...'}</span>
         </div>
       </div>
 

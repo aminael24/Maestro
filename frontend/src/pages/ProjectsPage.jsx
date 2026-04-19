@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { createPortal } from 'react-dom'; // 🔥 IMPORTANT
 import { useProjects } from '../hooks/useProjects';
 import { ProjectForm } from '../components/Projects/ProjectForm';
@@ -7,7 +8,7 @@ import './ProjectsPage.css';
 
 export default function ProjectsPage() {
   const { projects, loading, error, createProject, deleteProject } = useProjects();
-  const [isFormVisible, setIsFormVisible] = useState(false);
+  const { searchTerm, isFormVisible, setIsFormVisible } = useOutletContext();
 
   const handleCreateProject = async (data) => {
     try {
@@ -18,24 +19,21 @@ export default function ProjectsPage() {
     }
   };
 
+  const filteredProjects = projects.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="projects-page">
       <header className="projects-page__header">
-        <h1>Projects</h1>
-        {!isFormVisible && (
-          <button
-            className="btn-create-project"
-            onClick={() => setIsFormVisible(true)}
-          >
-            + Create New Project
-          </button>
-        )}
+       
       </header>
 
       <main className="projects-page__content">
         <div className="projects-page__list-container">
           <ProjectList
-            projects={projects}
+            projects={filteredProjects}
             loading={loading}
             error={error}
             onDelete={deleteProject}

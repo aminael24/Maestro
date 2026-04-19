@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from 'react';
 import './ProjectForm.css';
 
@@ -28,7 +29,7 @@ export function ProjectForm({ onSubmit, onCancel, loading = false }) {
     setFormError(null);
 
     if (!formData.name.trim()) {
-      setFormError('Project name is required');
+      setFormError('Le nom du projet est obligatoire');
       return;
     }
 
@@ -45,17 +46,17 @@ export function ProjectForm({ onSubmit, onCancel, loading = false }) {
         isDockerEnabled: true,
       });
     } catch (err) {
-      setFormError(err.message || 'Failed to create project. Please check your session.');
+      setFormError(err.message || 'Échec de la création du projet. Veuillez vérifier votre session.');
     }
   };
 
   return (
     <form className="project-form" onSubmit={handleSubmit}>
-      <h2 className="project-form__title">New Project</h2>
+      <h2 className="project-form__title">Nouveau Projet</h2>
       {formError && <div className="project-form__error">{formError}</div>}
 
       <div className="project-form__group">
-        <label htmlFor="name" className="project-form__label">Project Name</label>
+        <label htmlFor="name" className="project-form__label">Nom du Projet</label>
         <input
           id="name"
           type="text"
@@ -63,7 +64,7 @@ export function ProjectForm({ onSubmit, onCancel, loading = false }) {
           className="project-form__input"
           value={formData.name}
           onChange={handleChange}
-          placeholder="Ex: Cloud Migration"
+          placeholder="Ex: Migration Cloud"
           required
         />
       </div>
@@ -76,68 +77,66 @@ export function ProjectForm({ onSubmit, onCancel, loading = false }) {
           className="project-form__textarea"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Describe your project goals..."
+          placeholder="Décrivez les objectifs de votre projet..."
           rows="3"
         />
       </div>
 
-      <div className="project-form__group">
-        <label htmlFor="dueDate" className="project-form__label">Due Date</label>
-        <input id="dueDate" type="date" name="dueDate" className="project-form__input" value={formData.dueDate} onChange={handleChange} />
-      </div>
+      <div className="project-form__row">
+        <div className="project-form__group">
+          <label htmlFor="dueDate" className="project-form__label">Date d'échéance</label>
+          <input id="dueDate" type="date" name="dueDate" className="project-form__input" value={formData.dueDate} onChange={handleChange} />
+        </div>
 
-      <div className="project-form__group">
-        <label htmlFor="type" className="project-form__label">Project Type</label>
-        <select id="type" name="type" className="project-form__input" value={formData.type} onChange={handleChange}>
-          <option value="Frontend">Frontend</option>
-          <option value="Backend">Backend</option>
-          <option value="Fullstack">Fullstack</option>
-        </select>
+        <div className="project-form__group">
+          <label htmlFor="type" className="project-form__label">Type de Projet</label>
+          <select id="type" name="type" className="project-form__input" value={formData.type} onChange={handleChange}>
+            <option value="Fullstack">Fullstack (Web)</option>
+            <option value="Frontend">Interface Seule</option>
+            <option value="Backend">API Service</option>
+          </select>
+        </div>
       </div>
 
       {(formData.type === 'Frontend' || formData.type === 'Fullstack') && (
         <div className="project-form__group">
-          <label htmlFor="frontendFramework" className="project-form__label">Frontend Framework</label>
-          <select id="frontendFramework" name="frontendFramework" className="project-form__input" value={formData.frontendFramework} onChange={handleChange}>
-            <option value="React">React</option>
-          </select>
+          <label htmlFor="frontendFramework" className="project-form__label">Framework Frontend</label>
+          <div className="project-form__fixed-value">React</div>
         </div>
       )}
 
       {(formData.type === 'Backend' || formData.type === 'Fullstack') && (
         <div className="project-form__group">
-          <label htmlFor="backendFramework" className="project-form__label">Backend Framework</label>
-          <select id="backendFramework" name="backendFramework" className="project-form__input" value={formData.backendFramework} onChange={handleChange}>
-            <option value="Express">Express (Node.js)</option>
-          </select>
+          <label htmlFor="backendFramework" className="project-form__label">Framework Backend</label>
+          <div className="project-form__fixed-value">Express (Node.js)</div>
         </div>
       )}
 
-      <div className="project-form__group">
-        <label htmlFor="database" className="project-form__label">Database</label>
-        <select id="database" name="database" className="project-form__input" value={formData.database} onChange={handleChange}>
-          <option value="PostgreSQL">PostgreSQL</option>
-        </select>
-      </div>
+      <div className="project-form__row">
+        <div className="project-form__group">
+          <label htmlFor="database" className="project-form__label">Base de données</label>
+          <div className="project-form__fixed-value">PostgreSQL</div>
+        </div>
 
-     <div className="project-form__group">
-  <label className="project-form__checkbox">
-    <input
-      type="checkbox"
-      name="isDockerEnabled"
-      checked={formData.isDockerEnabled}
-      onChange={handleChange}
-    />
-    Enable Docker Containerization
-  </label>
-</div>
+        <div className="project-form__group" style={{ justifyContent: 'center' }}>
+          <label className="project-form__checkbox">
+            <input
+              type="checkbox"
+              name="isDockerEnabled"
+              checked={formData.isDockerEnabled}
+              onChange={handleChange}
+            />
+            Activer la conteneurisation Docker
+          </label>
+        </div>
+      </div>
 
       <div className="project-form__actions">
         <button type="button" className="project-form__button project-form__button--cancel" onClick={onCancel} disabled={loading}>
-          Cancel
+          Annuler
         </button>
         <button type="submit" className="project-form__button" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Project'}
+          {loading ? 'Création...' : 'Créer le projet'}
         </button>
       </div>
     </form>
