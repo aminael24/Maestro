@@ -1,16 +1,17 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { getMe } from '../../services/authService';
-import './Sidebar.css';
-import logoImage from '../../assets/logo.png'; // Importer l'image du logo
+import React from "react";
+import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+import { getMe } from "../../services/authService";
+import "./Sidebar.css";
+import logoImage from "../../assets/logo.png";
 
 const items = [
-  { path: '/workspace/dashboard', label: 'Tableau de bord' },
-  { path: '/workspace/projects', label: 'Projets' },
-  { path: '/workspace/deployments', label: 'Déploiements'},
-  { path: '/workspace/infrastructure', label: 'Infrastructure' },
-  { path: '/workspace/monitoring', label: 'Supervision' },
+  { path: "/workspace/dashboard", label: "Tableau de bord" },
+  { path: "/workspace/projects", label: "Projets" },
+  { path: "/workspace/ai-generator", label: "AI Generator" }, // ← AJOUT
+  { path: "/workspace/deployments", label: "Déploiements" },
+  { path: "/workspace/infrastructure", label: "Infrastructure" },
+  { path: "/workspace/monitoring", label: "Supervision" },
 ];
 
 export default function Sidebar() {
@@ -18,9 +19,14 @@ export default function Sidebar() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const token = localStorage.getItem('maestro_access_token');
+      const token = localStorage.getItem("maestro_access_token");
       if (token) {
-        try { const data = await getMe(token); setUser(data); } catch (e) { console.error(e); }
+        try {
+          const data = await getMe(token);
+          setUser(data);
+        } catch (e) {
+          console.error(e);
+        }
       }
     };
     fetchUser();
@@ -28,7 +34,6 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebarV2">
-
       {/* LOGO */}
       <div className="sidebarV2__logo">
         <img src={logoImage} alt="Maestro Logo" className="logo-img" />
@@ -45,7 +50,7 @@ export default function Sidebar() {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              isActive ? 'sidebarV2__link active' : 'sidebarV2__link'
+              isActive ? "sidebarV2__link active" : "sidebarV2__link"
             }
           >
             <span className="icon">{item.icon}</span>
@@ -56,13 +61,14 @@ export default function Sidebar() {
 
       {/* USER */}
       <div className="sidebarV2__user">
-        <div className="avatar">{user ? user.firstName?.charAt(0) : '?'}</div>
+        <div className="avatar">{user ? user.firstName?.charAt(0) : "?"}</div>
         <div>
-          <strong>{user ? `${user.firstName} ${user.lastName}` : 'Connecté'}</strong>
-          <span>{user ? user.username : 'Chargement...'}</span>
+          <strong>
+            {user ? `${user.firstName} ${user.lastName}` : "Connecté"}
+          </strong>
+          <span>{user ? user.username : "Chargement..."}</span>
         </div>
       </div>
-
     </aside>
   );
 }

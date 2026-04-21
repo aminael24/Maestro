@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+groq
+pydantic-settings
+python-dotenv
