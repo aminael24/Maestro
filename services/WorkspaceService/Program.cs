@@ -3,6 +3,7 @@ using Maestro.WorkspaceService.Domain.Entities;
 using Maestro.WorkspaceService.Infrastructure.Persistence;
 using Maestro.WorkspaceService.Application.Services;
 using Maestro.WorkspaceService.Application.DTOs;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,11 @@ builder.Services.AddDbContext<WorkspaceDbContext>(options =>
 
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+
+builder.Services.ConfigureHttpJsonOptions(options => {
+    // Permet de recevoir/envoyer les enums en string (ex: "Frontend") au lieu de 0, 1, 2
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 var app = builder.Build();
 
@@ -25,6 +31,10 @@ using (var scope = app.Services.CreateScope())
     {
         try
         {
+            // Supprime la base de données si elle existe. Utile en dev pour un schéma propre.
+            // ATTENTION: Ceci efface toutes les données à chaque démarrage.
+            // db.Database.EnsureDeleted(); // Désactivé pour conserver les données au redémarrage
+
             // Tente de créer les tables. Si elles existent déjà, EnsureCreated ne fera rien.
             // C'est plus sûr que creator.HasTables() qui peut être trompé par la table de migration.
             if (db.Database.EnsureCreated())
@@ -72,6 +82,13 @@ app.MapPost("/internal/projects", async (CreateProjectRequest request, IProjectS
     try
     {
         var created = await projectService.CreateProjectAsync(request);
+
+        // ── Initialisation automatique ────────────────────────
+        // On prépare l'environnement de travail (IDE) pour le projet en fonction de son type.
+        // Note : Ajoutez 'Task InitializeProjectAsync(int projectId, ProjectType projectType)' à IProjectService.
+        logger.LogInformation("[WS] Initializing workspace environment for project {ProjectId} of type {ProjectType}...", created.Id, created.Type);
+        await projectService.InitializeProjectAsync(created.Id, created.Type);
+
         return Results.Created($"/internal/projects/{created.Id}", created);
     }
     catch (Exception ex)
@@ -85,6 +102,18 @@ app.MapDelete("/internal/projects/{id}", async (int id, IProjectService projectS
 {
     var deleted = await projectService.DeleteProjectAsync(id);
     return deleted ? Results.NoContent() : Results.NotFound();
+});
+
+app.MapGet("/internal/projects/{id}/files", (int id, IProjectService projectService) =>
+{
+    var tree = projectService.GetProjectFileTree(id);
+    return Results.Ok(tree);
+});
+
+app.MapGet("/internal/projects/{id}/files/content", async (int id, string path, IProjectService projectService) =>
+{
+    var content = await projectService.GetFileContentAsync(id, path);
+    return content is not null ? Results.Ok(new { content }) : Results.NotFound();
 });
 
 app.Run();

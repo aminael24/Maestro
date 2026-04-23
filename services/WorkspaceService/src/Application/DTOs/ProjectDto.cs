@@ -1,3 +1,5 @@
+using Maestro.WorkspaceService.Domain.Entities;
+
 namespace Maestro.WorkspaceService.Application.DTOs;
 
 public record ProjectDto(
@@ -6,7 +8,7 @@ public record ProjectDto(
     string Description,
     string DueDate,
     string Status,
-    string Type,
+    ProjectType Type,
     string FrontendFramework,
     string BackendFramework,
     string Database,
@@ -15,11 +17,11 @@ public record ProjectDto(
 
 public record CreateProjectRequest(
     string Name,
-    string Description,
-    string DueDate,
-    string Type,
-    string FrontendFramework,
-    string BackendFramework,
-    string Database,
-    bool IsDockerEnabled
+    string? Description = "",
+    string? DueDate = "",
+    ProjectType Type = ProjectType.Fullstack,
+    string? FrontendFramework = "React",
+    string? BackendFramework = "Express",
+    string? Database = "PostgreSQL",
+    bool IsDockerEnabled = true
 );
