@@ -5,6 +5,7 @@ import {
   getStoredState,
   clearPkceData,
 } from "../features/auth/authHelpers";
+import { guardedFetch } from "../utils/apiGuard";
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ async function safeJson(response) {
 // ── Register ───────────────────────────────────────────────
 
 export async function registerUser(formData) {
-  const response = await fetch(`${env.apiGatewayUrl}/auth/register`, {
+  const response = await guardedFetch(`${env.apiGatewayUrl}/auth/register`, {
     method: "POST",
     body: formData,
   });
@@ -50,7 +51,7 @@ export async function exchangeCode(code, returnedState) {
     );
   }
 
-  const response = await fetch(`${env.apiGatewayUrl}/auth/callback`, {
+  const response = await guardedFetch(`${env.apiGatewayUrl}/auth/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include", // ← reçoit le cookie HttpOnly refresh_token
@@ -83,7 +84,7 @@ export async function exchangeCode(code, returnedState) {
  * Retourne le nouvel accessToken ou lance une erreur si la session est morte.
  */
 export async function refreshAccessToken() {
-  const response = await fetch(`${env.apiGatewayUrl}/auth/refresh`, {
+  const response = await guardedFetch(`${env.apiGatewayUrl}/auth/refresh`, {
     method: "POST",
     credentials: "include", // ← envoie le cookie HttpOnly
   });
@@ -110,7 +111,7 @@ export async function refreshAccessToken() {
  */
 export async function logout() {
   try {
-    await fetch(`${env.apiGatewayUrl}/auth/logout`, {
+    await guardedFetch(`${env.apiGatewayUrl}/auth/logout`, {
       method: "POST",
       credentials: "include",
     });
@@ -122,7 +123,7 @@ export async function logout() {
 // ── Get user profile ───────────────────────────────────────
 
 export async function getMe(accessToken) {
-  const response = await fetch(`${env.apiGatewayUrl}/auth/me`, {
+  const response = await guardedFetch(`${env.apiGatewayUrl}/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const data = await safeJson(response);
