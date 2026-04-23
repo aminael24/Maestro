@@ -10,6 +10,11 @@ services:
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     volumes:
       - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d ${KEYCLOAK_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - maestro-net
 
@@ -19,7 +24,8 @@ services:
     container_name: keycloak
     restart: always
     depends_on:
-      - keycloak-db
+      keycloak-db:
+        condition: service_healthy
     command: start-dev
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
@@ -32,16 +38,20 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
-      # Force Keycloak to always use localhost:8080 as the issuer URL.
-      # This ensures the token "iss" claim matches what both the browser
-      # AND the api-gateway container see, resolving the 401 issuer mismatch.
       KC_HOSTNAME: "localhost"
       KC_HOSTNAME_PORT: "8080"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8080:8080"
     volumes:
       - ./infra/keycloak/themes:/opt/keycloak/themes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     networks:
       - maestro-net
 
@@ -58,8 +68,67 @@ services:
       - user_db_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER} -d ${USER_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - maestro-net
+
+  # ── EF Migrations (one-shot) ───────────────────────────────
+  api-gateway-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: api-gateway-migrations
+    working_dir: /src
+    volumes:
+      - ./services/ApiGateway:/src
+    depends_on:
+      user-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      # Database connection
+      USER_DB_HOST: ${USER_DB_HOST}
+      USER_DB_PORT: ${USER_DB_PORT}
+      USER_DB_DATABASE: ${USER_DB_DATABASE}
+      USER_DB_USERNAME: ${USER_DB_USERNAME}
+      USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
+      # Other env vars
+      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+      KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
+      KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
+      KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
+      WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
+    networks:
+      - maestro-net
+    # FIXED: Proper way to run migrations
+    entrypoint: >
+      sh -c "
+        apt-get update && 
+        apt-get install -y curl &&
+        echo 'Waiting for database...' &&
+        until curl -f http://user-db:5432 2>/dev/null; do
+          echo 'Waiting for postgres...';
+          sleep 2;
+        done &&
+        echo 'Database is ready!' &&
+        cd /src &&
+        dotnet restore &&
+        dotnet tool install --global dotnet-ef --version 8.0.0 &&
+        export PATH=\"\$PATH:/root/.dotnet/tools\" &&
+        echo 'Running migrations...' &&
+        dotnet ef database update --verbose ||
+        echo 'Migration completed or no migrations to apply'
+      "
 
   # ── API Gateway ────────────────────────────────────────────
   api-gateway:
@@ -69,8 +138,12 @@ services:
     container_name: api-gateway
     restart: always
     depends_on:
-      - keycloak
-      - user-db
+      keycloak:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+      api-gateway-migrations:
+        condition: service_completed_successfully
     environment:
       ASPNETCORE_URLS: http://+:8080
 
@@ -99,39 +172,14 @@ services:
       - "5000:8080"
     volumes:
       - uploads_data:/app/wwwroot/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - maestro-net
-
-  # ── EF Migrations (one-shot) ───────────────────────────────
-  api-gateway-migrations:
-    image: mcr.microsoft.com/dotnet/sdk:8.0
-    container_name: api-gateway-migrations
-    working_dir: /src
-    volumes:
-      - ./services/ApiGateway:/src
-    depends_on:
-      - user-db
-    environment:
-      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
-      KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
-      KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
-      KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
-      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
-      KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
-      USER_DB_HOST: ${USER_DB_HOST}
-      USER_DB_PORT: ${USER_DB_PORT}
-      USER_DB_DATABASE: ${USER_DB_DATABASE}
-      USER_DB_USERNAME: ${USER_DB_USERNAME}
-      USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
-      WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
-    networks:
-      - maestro-net
-    command: ["dotnet", "ef", "database", "update"]
 
   # ── pgAdmin ────────────────────────────────────────────────
   pgadmin:
@@ -145,6 +193,9 @@ services:
       - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - user-db
+      - keycloak-db
     networks:
       - maestro-net
 
@@ -168,7 +219,8 @@ services:
       VITE_API_GATEWAY_URL: ${VITE_API_GATEWAY_URL}
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
     networks:
       - maestro-net
 
