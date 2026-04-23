@@ -1,4 +1,27 @@
 services:
+  # ── Zookeeper ────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - maestro-net
+  # ── Kafka ────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    networks:
+      - maestro-net
   # ── Keycloak DB ────────────────────────────────────────────
   keycloak-db:
     image: postgres:16
@@ -90,6 +113,8 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
 
+      KAFKA_BROKER: kafka:9092
+
       KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
       KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
@@ -157,6 +182,21 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+    networks:
+      - maestro-net
+
+  # ── Runner Service ──────────────────────────────────────
+  runner-service:
+    build:
+      context: ./services/RunnerService
+      dockerfile: Dockerfile
+    container_name: runner-service
+    restart: always
+    depends_on:
+      - kafka
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      KAFKA_BROKER: kafka:9092
     networks:
       - maestro-net
 

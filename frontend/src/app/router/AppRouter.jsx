@@ -6,6 +6,8 @@ import AuthCallbackPage from "../../pages/Auth/AuthCallbackPage";
 import MainLayout from "../../components/Layout/MainLayout";
 import DashboardPage from "../../pages/DashboardPage";
 import ProjectsPage from "../../pages/ProjectsPage";
+import ProjectWorkspacePage from "../../pages/Workspace/ProjectWorkspacePage";
+import { isDevMode } from "../../utils/env";
 import {
   getAccessToken,
   clearTokens,
@@ -60,6 +62,12 @@ function WorkspacePage() {
     <MainLayout />
   );
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  Guard – bypass ProtectedRoute in dev mode
+// ═══════════════════════════════════════════════════════════════
+
+const Guard = isDevMode ? ({ children }) => children : ProtectedRoute;
 
 // ═══════════════════════════════════════════════════════════════
 //  ProtectedRoute – tente un silent refresh si le token mémoire
@@ -127,16 +135,21 @@ export default function AppRouter() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         
         <Route
-          path="/workspace"
-          element={
-            <ProtectedRoute>
-              <WorkspacePage />
-            </ProtectedRoute>
-          }
-        >
+  path="/workspace"
+  element={
+    isDevMode ? (
+      <WorkspacePage />
+    ) : (
+      <ProtectedRoute>
+        <WorkspacePage />
+      </ProtectedRoute>
+    )
+  }
+>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:projectId" element={<ProjectWorkspacePage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/workspace" replace />} />
