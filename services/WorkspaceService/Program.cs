@@ -89,7 +89,10 @@ app.MapPost("/internal/projects", async (CreateProjectRequest request, IProjectS
         logger.LogInformation("[WS] Initializing workspace environment for project {ProjectId} of type {ProjectType}...", created.Id, created.Type);
         await projectService.InitializeProjectAsync(created.Id, created.Type);
 
-        return Results.Created($"/internal/projects/{created.Id}", created);
+        // Récupérer la version à jour du projet (avec le statut 'active') pour la réponse
+        var updatedProject = await projectService.GetProjectByIdAsync(created.Id);
+
+        return Results.Created($"/internal/projects/{created.Id}", updatedProject);
     }
     catch (Exception ex)
     {

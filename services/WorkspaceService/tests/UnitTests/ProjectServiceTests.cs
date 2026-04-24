@@ -4,11 +4,20 @@ using Maestro.WorkspaceService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Maestro.WorkspaceService.Domain.Entities;
 
 namespace Maestro.WorkspaceService.Tests.UnitTests;
 
 public class ProjectServiceTests
 {
+    public ProjectServiceTests()
+    {
+        // Utilise un dossier temporaire pour les tests au lieu de /app/projects
+        var tempPath = Path.Combine(Path.GetTempPath(), "MaestroTests", Guid.NewGuid().ToString());
+        Environment.SetEnvironmentVariable("PROJECTS_STORAGE_PATH", tempPath);
+    }
+
     private WorkspaceDbContext GetDatabaseContext()
     {
         var options = new DbContextOptionsBuilder<WorkspaceDbContext>()
@@ -22,12 +31,12 @@ public class ProjectServiceTests
     {
         // Arrange
         var db = GetDatabaseContext();
-        var service = new ProjectService(db);
+        var service = new ProjectService(db, NullLogger<ProjectService>.Instance);
         var request = new CreateProjectRequest(
             "Projet de Test", 
             "Vérification Task 5", 
             "2026-10-10", 
-            "Fullstack", 
+            ProjectType.Fullstack, 
             "React", 
             "Express", 
             "PostgreSQL", 
@@ -49,16 +58,16 @@ public class ProjectServiceTests
     {
         // Arrange
         var db = GetDatabaseContext();
-        db.Projects.Add(new Domain.Entities.Project { Name = "P1", Type = "Frontend" });
-        db.Projects.Add(new Domain.Entities.Project { Name = "P2", Type = "Backend" });
+        db.Projects.Add(new Domain.Entities.Project { Name = "P1", Type = ProjectType.Frontend });
+        db.Projects.Add(new Domain.Entities.Project { Name = "P2", Type = ProjectType.Backend });
         await db.SaveChangesAsync();
-        var service = new ProjectService(db);
+        var service = new ProjectService(db, NullLogger<ProjectService>.Instance);
 
         // Act
         var results = await service.GetAllProjectsAsync();
 
         // Assert
-        Assert.Equal(2, results.Count());
+        results.Should().HaveCount(2);
     }
 
     [Fact]
@@ -68,9 +77,27 @@ public class ProjectServiceTests
         var project = new Domain.Entities.Project { Name = "Delete Me" };
         db.Projects.Add(project);
         await db.SaveChangesAsync();
-        var service = new ProjectService(db);
+        var service = new ProjectService(db, NullLogger<ProjectService>.Instance);
 
         var deleted = await service.DeleteProjectAsync(project.Id);
-        Assert.True(deleted);
+        deleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InitializeProjectAsync_ShouldSetStatusToActive()
+    {
+        // Arrange
+        var db = GetDatabaseContext();
+        var project = new Project { Name = "Init Test", Status = "pending" };
+        db.Projects.Add(project);
+        await db.SaveChangesAsync();
+        var service = new ProjectService(db, NullLogger<ProjectService>.Instance);
+
+        // Act
+        await service.InitializeProjectAsync(project.Id, ProjectType.Frontend);
+
+        // Assert
+        var updated = await db.Projects.FindAsync(project.Id);
+        updated!.Status.Should().Be("active");
     }
 }
