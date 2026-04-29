@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import MainLayout from "../../components/Layout/MainLayout";
 import DashboardPage from "../../pages/DashboardPage";
 import ProjectsPage from "../../pages/ProjectsPage";
-import AiGeneratorPage from "../../pages/AiGeneratorPage";
+import AiEditorPage from "../../pages/Workspace/AiEditorPage";
 
 // ═══════════════════════════════════════════════════════════════
 //  WorkspacePage
@@ -56,7 +56,7 @@ export default function AppRouter() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="projects" element={<ProjectsPage />} />
-          <Route path="ai-generator" element={<AiGeneratorPage />} />
+          <Route path="ai-generator" element={<AiEditorPage />} />
         </Route>
 
         <Route

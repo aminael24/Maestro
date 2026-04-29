@@ -1,22 +1,46 @@
-const API_URL = "http://localhost:8000/api/ai/generate";
+import axios from 'axios';
 
-export async function generateCode({ description, language, context }) {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ description, language, context }),
-  });
-  if (!res.ok) throw new Error(`Erreur serveur : ${res.status}`);
-  return res.json();
-}
+const API_BASE_URL = 'http://localhost:8000/api/ai';
 
-export function parseCode(raw) {
-  const backendMatch = raw.match(
-    /\/\/ ={3,} BACKEND[\s\S]*?\n([\s\S]*?)(?=\/\/ ={3,} FRONTEND|$)/,
-  );
-  const frontendMatch = raw.match(/\/\/ ={3,} FRONTEND[\s\S]*?\n([\s\S]*?)$/);
-  return {
-    backend: backendMatch ? backendMatch[1].trim() : raw,
-    frontend: frontendMatch ? frontendMatch[1].trim() : "",
-  };
-}
+const aiService = {
+  /**
+   * Génère un projet CRUD complet depuis une description
+   */
+  generateCode: async (description, language = "Express + React", context = "PostgreSQL") => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/generate`, {
+        description,
+        language,
+        context
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de l'appel au service IA:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Modifie un fichier existant via le chat
+   * @param {string} message        - La demande de l'utilisateur
+   * @param {object} currentFiles   - Tous les fichiers actuels du store
+   * @param {string} selectedCode   - Le snippet sélectionné (peut être null)
+   * @param {string} selectedFile   - La clé du fichier ciblé (peut être null)
+   */
+  chatWithAi: async (message, currentFiles, selectedCode = null, selectedFile = null) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/chat`, {
+        message,
+        currentFiles,
+        selectedCode,
+        selectedFile
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors du chat avec l'IA:", error);
+      throw error;
+    }
+  }
+};
+
+export default aiService;
