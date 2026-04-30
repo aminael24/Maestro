@@ -11,8 +11,17 @@ public class WorkspaceDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Force explicit lowercase table naming to avoid "Relation Projects does not exist"
+        // Force explicit lowercase naming to avoid case-sensitivity issues in PostgreSQL
         modelBuilder.Entity<Project>().ToTable("projects");
+        
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entity.GetProperties())
+            {
+                property.SetColumnName(property.Name.ToLowerInvariant());
+            }
+        }
+
         base.OnModelCreating(modelBuilder);
     }
 }

@@ -4,6 +4,7 @@ using Maestro.WorkspaceService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.IO;
+using Maestro.WorkspaceService.Application.Services;
 
 namespace Maestro.WorkspaceService.Application.Services;
 
@@ -47,7 +48,8 @@ public class ProjectService(WorkspaceDbContext db, ILogger<ProjectService> logge
             BackendFramework = request.BackendFramework ?? "Express",
             Database = request.Database ?? "PostgreSQL",
             IsDockerEnabled = request.IsDockerEnabled,
-            Status = "pending"
+            Status = "pending",
+            KeycloakId = request.KeycloakId
         };
 
         db.Projects.Add(project);
@@ -207,6 +209,6 @@ public class ProjectService(WorkspaceDbContext db, ILogger<ProjectService> logge
     private static ProjectDto MapToDto(Project p) => new(
         p.Id, p.Name, p.Description, p.DueDate, p.Status, 
         p.Type, p.FrontendFramework, p.BackendFramework, 
-        p.Database, p.IsDockerEnabled
+        p.Database, p.IsDockerEnabled, p.KeycloakId
     );
 }

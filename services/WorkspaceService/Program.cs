@@ -4,6 +4,9 @@ using Maestro.WorkspaceService.Infrastructure.Persistence;
 using Maestro.WorkspaceService.Application.Services;
 using Maestro.WorkspaceService.Application.DTOs;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims; // Ajouté pour HttpContext.User.FindFirstValue
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +17,58 @@ builder.Services.AddDbContext<WorkspaceDbContext>(options =>
 
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IKafkaProducer, KafkaProducer>(); // Ajouté pour la liaison avec l'IDE via Kafka
+builder.Services.AddAuthorization();
+
+// ── Configuration Authentification (Stratégie JWKS robuste) ──
+var keycloakPublicIssuer   = "http://localhost:8080/realms/maestro";
+var keycloakInternalIssuer = "http://keycloak:8080/realms/maestro";
+var jwksUri = $"{keycloakInternalIssuer}/protocol/openid-connect/certs";
+
+// Fetch JWKS au démarrage pour éviter les problèmes de résolution DNS internes
+Microsoft.IdentityModel.Tokens.JsonWebKeySet? jwks = null;
+{
+    using var httpClient = new HttpClient();
+    var jwksRetries = 10;
+    while (jwksRetries > 0)
+    {
+        try {
+            var jwksJson = await httpClient.GetStringAsync(jwksUri);
+            jwks = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson);
+            Console.WriteLine($"[JWT] JWKS chargé avec succès depuis {jwksUri}");
+            break;
+        } catch (Exception ex) {
+            jwksRetries--;
+            Console.WriteLine($"[JWT] Attente de Keycloak... ({jwksRetries} essais restants): {ex.Message}");
+            await Task.Delay(3000);
+        }
+    }
+}
+
+// IMPORTANT: Désactive le remapping automatique des claims (pour garder "sub")
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+       
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false,
+            ValidateIssuer = true,
+             ValidIssuers = new[] { keycloakPublicIssuer, keycloakInternalIssuer },
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKeys = jwks?.GetSigningKeys()
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context => {
+                Console.WriteLine($"[JWT] Échec validation: {context.Exception.Message}");
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 builder.Services.ConfigureHttpJsonOptions(options => {
     // Permet de recevoir/envoyer les enums en string (ex: "Frontend") au lieu de 0, 1, 2
@@ -44,8 +99,9 @@ using (var scope = app.Services.CreateScope())
             app.Logger.LogInformation("[DB] Database is ready.");
             break;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            app.Logger.LogWarning("[DB] Database not ready yet, retrying in 2s... ({Retries} attempts left). Error: {Message}", retries, ex.Message);
             retries--;
             // Réduction du temps d'attente à 2s pour un démarrage plus fluide
             System.Threading.Thread.Sleep(2000);
@@ -56,8 +112,11 @@ using (var scope = app.Services.CreateScope())
 // ── Health Check ────────────────────────────────────────────
 app.MapGet("/health", () => Results.Ok("Healthy"));
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 // ── Internal Projects API ───────────────────────────────────
-app.MapGet("/internal/projects", async (IProjectService projectService, WorkspaceDbContext db, ILogger<Program> logger) =>
+app.MapGet("/internal/projects", async (IProjectService projectService, ILogger<Program> logger) =>
 {
     try
     {
@@ -69,19 +128,62 @@ app.MapGet("/internal/projects", async (IProjectService projectService, Workspac
         logger.LogError(ex, "Erreur lors de la récupération des projets");
         return Results.Problem("Erreur interne de base de données.");
     }
-});
+}).RequireAuthorization();
 
-app.MapGet("/internal/projects/{id}", async (int id, IProjectService projectService) =>
+app.MapGet("/internal/projects/{id}", async (int id, IProjectService projectService, IKafkaProducer kafkaProducer, ILogger<Program> logger, HttpContext httpContext) =>
 {
     var project = await projectService.GetProjectByIdAsync(id);
-    return project is not null ? Results.Ok(project) : Results.NotFound();
-});
+    if (project is null) return Results.NotFound();
 
-app.MapPost("/internal/projects", async (CreateProjectRequest request, IProjectService projectService, ILogger<Program> logger) =>
+    try
+    {
+        // Lorsque l'utilisateur récupère le projet (clic), on produit un événement Kafka
+        // pour que le service IDE sache quel environnement préparer.
+        var keycloakId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) 
+                         ?? httpContext.User.FindFirstValue("sub") 
+                         ?? project.KeycloakId;
+
+        var openEvent = new ProjectOpenedEvent(
+            project.Id,
+            project.Name,
+            keycloakId,
+            project.Type.ToString(),
+            project.FrontendFramework,
+            project.BackendFramework,
+            project.Database,
+            project.IsDockerEnabled,
+            DateTime.UtcNow
+        );
+
+        await kafkaProducer.ProduceProjectOpenedAsync(openEvent);
+        logger.LogInformation("[Kafka] Événement ProjectOpened envoyé pour le projet {ProjectId}", id);
+    }
+    catch (Exception ex)
+    {
+        // On ne bloque pas l'accès au projet si Kafka échoue, mais on log l'erreur
+        logger.LogError(ex, "Erreur lors de l'envoi Kafka pour le projet {ProjectId}", id);
+    }
+
+    return Results.Ok(project);
+}).RequireAuthorization();
+
+app.MapPost("/internal/projects", async (CreateProjectRequest request, IProjectService projectService, ILogger<Program> logger, HttpContext httpContext) =>
 {
     try
     {
-        var created = await projectService.CreateProjectAsync(request);
+        // Extraire le KeycloakId des claims de l'utilisateur authentifié
+        var keycloakId = httpContext.User.FindFirstValue("sub") 
+                         ?? httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(keycloakId))
+        {
+            logger.LogWarning("Tentative de création de projet sans KeycloakId pour l'utilisateur.");
+            return Results.Unauthorized(); // Ou Results.BadRequest si KeycloakId est obligatoire
+        }
+
+        // Créer un nouvel objet request avec le KeycloakId
+        var requestWithKeycloakId = request with { KeycloakId = keycloakId };
+        var created = await projectService.CreateProjectAsync(requestWithKeycloakId);
 
         // ── Initialisation automatique ────────────────────────
         // On prépare l'environnement de travail (IDE) pour le projet en fonction de son type.
@@ -99,13 +201,13 @@ app.MapPost("/internal/projects", async (CreateProjectRequest request, IProjectS
         logger.LogError(ex, "Erreur lors de la création du projet");
         return Results.Problem("Erreur lors de la création du projet.");
     }
-});
+}).RequireAuthorization();
 
 app.MapDelete("/internal/projects/{id}", async (int id, IProjectService projectService) =>
 {
     var deleted = await projectService.DeleteProjectAsync(id);
     return deleted ? Results.NoContent() : Results.NotFound();
-});
+}).RequireAuthorization();
 
 app.MapGet("/internal/projects/{id}/files", (int id, IProjectService projectService) =>
 {

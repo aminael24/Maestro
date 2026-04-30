@@ -12,7 +12,8 @@ public record ProjectDto(
     string FrontendFramework,
     string BackendFramework,
     string Database,
-    bool IsDockerEnabled
+    bool IsDockerEnabled,
+    string KeycloakId
 );
 
 public record CreateProjectRequest(
@@ -23,5 +24,6 @@ public record CreateProjectRequest(
     string? FrontendFramework = "React",
     string? BackendFramework = "Express",
     string? Database = "PostgreSQL",
-    bool IsDockerEnabled = true
+    bool IsDockerEnabled = true,
+    string KeycloakId = ""
 );
