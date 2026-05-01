@@ -3,6 +3,8 @@ using Maestro.WorkspaceService.Domain.Entities;
 using Maestro.WorkspaceService.Infrastructure.Persistence;
 using Maestro.WorkspaceService.Application.Services;
 using Maestro.WorkspaceService.Application.DTOs;
+using Maestro.WorkspaceService.Application.Interfaces;
+using Maestro.WorkspaceService.Infrastructure.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +14,9 @@ builder.Services.AddDbContext<WorkspaceDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IKafkaProducer, KafkaProducer>();
 
 var app = builder.Build();
 
@@ -44,7 +48,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Health Check ────────────────────────────────────────────
-app.MapGet("/health", () => Results.Ok("Healthy"));
+app.MapHealthChecks("/health");
 
 // ── Internal Projects API ───────────────────────────────────
 app.MapGet("/internal/projects", async (IProjectService projectService, WorkspaceDbContext db, ILogger<Program> logger) =>

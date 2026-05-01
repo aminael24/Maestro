@@ -19,6 +19,7 @@ var gatewayClientId     = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID
 var gatewayClientSecret = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET");
 var workspaceServiceUrl = Environment.GetEnvironmentVariable("WORKSPACE_SERVICE_URL");
 var deployServiceUrl    = Environment.GetEnvironmentVariable("DEPLOY_SERVICE_URL");
+var aiServiceUrl        = Environment.GetEnvironmentVariable("AI_SERVICE_URL") ?? "http://host.docker.internal:8000";
 
 var userDbHost     = Environment.GetEnvironmentVariable("USER_DB_HOST");
 var userDbPort     = Environment.GetEnvironmentVariable("USER_DB_PORT");
@@ -268,6 +269,33 @@ app.MapPost("/api/projects", async (HttpContext context, IHttpClientFactory http
     {
         Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
         return Results.Problem("Unable to create project: Workspace Service is unreachable.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+// ── AI-AGENT proxy ──────────────────────────────────────────
+app.MapPost("/api/projects/{id}/ai/prompt", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
+
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{workspaceServiceUrl}/internal/projects/{id}/ai/prompt");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] AI Agent failure: {ex.Message}");
+        return Results.Problem("AI Service unreachable", statusCode: 502);
     }
 }).RequireAuthorization();
 

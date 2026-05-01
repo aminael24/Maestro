@@ -135,6 +135,7 @@ services:
       USER_DB_USERNAME: ${USER_DB_USERNAME}
       USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
       WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
+      AI_SERVICE_URL: http://host.docker.internal:8000
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     ports:
       - "5000:8080"
@@ -157,8 +158,9 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       DATABASE_URL: Host=workspace-db;Port=5432;Database=workspace_db;Username=admin;Password=admin_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
