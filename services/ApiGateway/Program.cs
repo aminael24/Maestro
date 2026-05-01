@@ -9,6 +9,9 @@ using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Pre-warm ThreadPool to prevent starvation warnings during high-load container startups
+ThreadPool.SetMinThreads(100, 100);
+
 // ── Environment variables ───────────────────────────────────
 var realmUrl            = Environment.GetEnvironmentVariable("KEYCLOAK_REALM_URL");
 var tokenEndpoint       = Environment.GetEnvironmentVariable("KEYCLOAK_TOKEN_ENDPOINT");
@@ -16,6 +19,7 @@ var gatewayClientId     = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID
 var gatewayClientSecret = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_SECRET");
 var workspaceServiceUrl = Environment.GetEnvironmentVariable("WORKSPACE_SERVICE_URL");
 var deployServiceUrl    = Environment.GetEnvironmentVariable("DEPLOY_SERVICE_URL");
+var aiServiceUrl        = Environment.GetEnvironmentVariable("AI_SERVICE_URL") ?? "http://host.docker.internal:8000";
 
 var userDbHost     = Environment.GetEnvironmentVariable("USER_DB_HOST");
 var userDbPort     = Environment.GetEnvironmentVariable("USER_DB_PORT");
@@ -103,7 +107,8 @@ builder.Services
         {
             OnAuthenticationFailed = ctx =>
             {
-                Console.WriteLine($"[JWT] FAILED: {ctx.Exception.GetType().Name}: {ctx.Exception.Message}");
+                // This log will tell you if it's an Expired Token or an Issuer Mismatch
+                Console.WriteLine($"[JWT] AUTH FAILED: {ctx.Exception.Message}");
                 return System.Threading.Tasks.Task.CompletedTask;
             },
             OnTokenValidated = ctx =>
@@ -126,6 +131,7 @@ builder.Services.AddScoped<RegisterService>();
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<ProfileImageService>();
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails(); // Better error formatting
 builder.WebHost.UseWebRoot("wwwroot");
 
 var app = builder.Build();
@@ -153,10 +159,14 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Middleware pipeline ─────────────────────────────────────
-app.UseCors();
+app.UseCors(); // Keep this at the top
+
+var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider("/app/wwwroot"),
+    FileProvider = new PhysicalFileProvider(uploadPath),
     RequestPath = ""
 });
 app.UseAuthentication();
@@ -172,34 +182,172 @@ app.MapGet("/", () => Results.Ok(new
 // ── WORKSPACE-SERVICE proxy ─────────────────────────────────
 app.MapGet("/api/projects", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
 {
-    var incomingToken = ExtractBearerToken(context);
-    if (incomingToken is null) return Results.Unauthorized();
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
 
-    var client = httpClientFactory.CreateClient();
-    var request = new HttpRequestMessage(HttpMethod.Get, workspaceServiceUrl + "/internal/projects");
-    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
 
-    var response = await client.SendAsync(request);
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        // On renvoie un objet d'erreur structuré pour le frontend
+        return Results.Problem("Workspace Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/projects/{id}", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects/{id}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to fetch project details.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapDelete("/api/projects/{id}", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"{workspaceServiceUrl}/internal/projects/{id}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+        var response = await client.SendAsync(request);
+        
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+            return Results.NoContent();
+
+        return Results.StatusCode((int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to delete project: Workspace Service is unreachable.", statusCode: 502);
+    }
 }).RequireAuthorization();
 
 app.MapPost("/api/projects", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
 {
-    var incomingToken = ExtractBearerToken(context);
-    if (incomingToken is null) return Results.Unauthorized();
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
 
-    using var reader = new StreamReader(context.Request.Body);
-    var body = await reader.ReadToEndAsync();
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
 
-    var client = httpClientFactory.CreateClient();
-    var request = new HttpRequestMessage(HttpMethod.Post, workspaceServiceUrl + "/internal/projects");
-    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
-    request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, workspaceServiceUrl + "/internal/projects");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
 
-    var response = await client.SendAsync(request);
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to create project: Workspace Service is unreachable.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+// ── AI-AGENT proxy ──────────────────────────────────────────
+app.MapPost("/api/projects/{id}/ai/prompt", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
+
+        var client = httpClientFactory.CreateClient();
+        // S'assurer que le path correspond à ce que FastAPI attend (souvent sans /api/ai si préfixé)
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{aiServiceUrl}/api/ai/prompt");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] AI Agent failure: {ex.Message}");
+        return Results.Problem("AI Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+// ── FILES proxy ─────────────────────────────────────────────
+app.MapGet("/api/projects/{id}/files", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects/{id}/files");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to fetch project file tree.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/projects/{id}/files/content", async (string id, string path, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient();
+        var encodedPath = Uri.EscapeDataString(path);
+        
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects/{id}/files/content?path={encodedPath}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception)
+    {
+        return Results.Problem("Unable to read file content.", statusCode: 502);
+    }
 }).RequireAuthorization();
 
 // ── DEPLOY-SERVICE proxy (with token exchange) ──────────────

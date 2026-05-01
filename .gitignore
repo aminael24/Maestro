@@ -1,48 +1,35 @@
-# =========================
-# .NET
-# =========================
-bin/
-obj/
-*.user
-*.suo
-*.cache
-*.dll
-
-# Visual Studio
-.vs/
-*.csproj.user
-
-# =========================
-# Node / Frontend
-# =========================
+# Node
 node_modules/
 dist/
 build/
-
-# Logs
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# =========================
-# Environment
-# =========================
-.env
-.env.*
-!.env.example
+# React / Vite
+frontend/.vite/
 
-# =========================
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+
 # OS
-# =========================
 .DS_Store
 Thumbs.db
 
-# =========================
-# Docker
-# =========================
-docker-compose.override.yml
+# Env
+.env
+.env.local
 
-# =========================
-# Others
-# =========================
+# IDE
+.vscode/
+.idea/
+
+# Logs
+logs/
 *.log
+
+# Workspace temp
+
+tmp/

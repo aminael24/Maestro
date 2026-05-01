@@ -1,52 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+ 
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #0b1020;
-  --border: #2e303a;
-  font: 16px/145% Inter, system-ui, 'Segoe UI', Roboto, sans-serif;
-  color-scheme: dark;
-  color: #fff;
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --navy: #083A4F;
+  --navy-mid: #0d4e6a;
+  --teal: #487E8C;
+  --teal-light: #6a9daa;
+  --aqua: #C8D5D6;
+  --aqua-light: #dce8e9;
+  --sand: #F5EFEB;
+  --sand-dark: #ede5de;
+  --gold: #A58D66;
+  --gold-light: #c4aa82;
+  --white: #FFFFFF;
+ 
+  --bg-main: #f0ebe4;
+  --card-light: #ffffff;
+  --card-muted: #f7f5f2;
+  --card-aqua: #d4e3e5;
+ 
+  --text-dark: #0d2330;
+  --text-mid: #3a5260;
+  --text-light: #6b7c86;
+  --text-hint: #9aabb5;
+ 
+  --border-soft: rgba(8,58,79,0.1);
+  --border-mid: rgba(8,58,79,0.18);
+ 
+  --font-display: 'DM Serif Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+ 
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+ 
+  --shadow-sm: 0 2px 8px rgba(8,58,79,0.06);
+  --shadow-md: 0 4px 20px rgba(8,58,79,0.09);
+  --shadow-lg: 0 8px 32px rgba(8,58,79,0.12);
 }
-
-* {
-  box-sizing: border-box;
+ html, body, #root {
+  height: 100%;
 }
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
+ 
 body {
-  margin: 0;
-}
+  font-family: var(--font-body);
+  background: var(--bg-main);
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
 
-#root {
-  min-height: 100vh;
+  margin: 0; /* 🔥 IMPORTANT */
 }
-
-/* Spinner animation for callback page */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Focus styles for inputs */
-input:focus {
-  border-color: rgba(124, 58, 237, 0.5) !important;
-  outline: none;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.05);
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-a:hover {
-  color: #a78bfa !important;
-}
+button { font-family: var(--font-body); cursor: pointer; }
+input  { font-family: var(--font-body); }
