@@ -1,10 +1,16 @@
+
 export const env = {
+  mode: import.meta.env.VITE_APP_MODE || "integrated",
+
   keycloakUrl: import.meta.env.VITE_KEYCLOAK_URL,
   keycloakRealm: import.meta.env.VITE_KEYCLOAK_REALM,
   keycloakClientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
   frontendUrl: import.meta.env.VITE_FRONTEND_URL,
   apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
 };
+
+export const isDevMode = env.mode === "dev";
+export const isIntegratedMode = env.mode === "integrated";
 
 export function assertEnv() {
   const missing = [];

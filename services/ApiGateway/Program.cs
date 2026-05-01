@@ -160,9 +160,13 @@ using (var scope = app.Services.CreateScope())
 
 // ── Middleware pipeline ─────────────────────────────────────
 app.UseCors(); // Keep this at the top
+
+var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider("/app/wwwroot"),
+    FileProvider = new PhysicalFileProvider(uploadPath),
     RequestPath = ""
 });
 app.UseAuthentication();
@@ -184,7 +188,7 @@ app.MapGet("/api/projects", async (HttpContext context, IHttpClientFactory httpC
         if (incomingToken is null) return Results.Unauthorized();
 
         var client = httpClientFactory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Get, workspaceServiceUrl + "/internal/projects");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
 
         var response = await client.SendAsync(request);
@@ -284,7 +288,8 @@ app.MapPost("/api/projects/{id}/ai/prompt", async (string id, HttpContext contex
         var body = await reader.ReadToEndAsync();
 
         var client = httpClientFactory.CreateClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{workspaceServiceUrl}/internal/projects/{id}/ai/prompt");
+        // S'assurer que le path correspond à ce que FastAPI attend (souvent sans /api/ai si préfixé)
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{aiServiceUrl}/api/ai/prompt");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
         request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
 
@@ -296,6 +301,52 @@ app.MapPost("/api/projects/{id}/ai/prompt", async (string id, HttpContext contex
     {
         Console.WriteLine($"[PROXY ERROR] AI Agent failure: {ex.Message}");
         return Results.Problem("AI Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+// ── FILES proxy ─────────────────────────────────────────────
+app.MapGet("/api/projects/{id}/files", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects/{id}/files");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to fetch project file tree.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/projects/{id}/files/content", async (string id, string path, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient();
+        var encodedPath = Uri.EscapeDataString(path);
+        
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{workspaceServiceUrl}/internal/projects/{id}/files/content?path={encodedPath}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception)
+    {
+        return Results.Problem("Unable to read file content.", statusCode: 502);
     }
 }).RequireAuthorization();
 

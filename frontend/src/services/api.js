@@ -6,6 +6,7 @@
 
 import axios from 'axios';
 import { getAccessToken } from '../features/auth/authStorage';
+import { isDevMode } from '../utils/env';
 
 // Configuration de base
 const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:5000';
@@ -17,6 +18,16 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Intercepteur pour vérifier le mode dev et bloquer les appels API
+api.interceptors.request.use((config) => {
+  if (isDevMode) {
+    throw new Error(
+      `[DEV MODE] API call blocked: ${config.method?.toUpperCase() || 'GET'} ${config.url}`
+    );
+  }
+  return config;
 });
 
 // Intercepteur pour ajouter automatiquement le token à chaque requête

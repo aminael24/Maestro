@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy project file first (for caching restore)
@@ -12,7 +12,7 @@ COPY . .
 RUN dotnet publish "RunnerService.csproj" -c Release -o /app/publish --no-restore
 
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
 # Expose API port (adjust if needed)
