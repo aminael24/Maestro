@@ -31,5 +31,5 @@ logs/
 *.log
 
 # Workspace temp
-workspace/
+
 tmp/
