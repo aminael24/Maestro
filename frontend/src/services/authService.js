@@ -123,10 +123,31 @@ export async function logout() {
 // ── Get user profile ───────────────────────────────────────
 
 export async function getMe(accessToken) {
-  const response = await guardedFetch(`${env.apiGatewayUrl}/auth/me`, {
+  let response = await guardedFetch(`${env.apiGatewayUrl}/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+
+  // 🔥 If token expired → try refresh
+  if (response.status === 401) {
+    console.log("🔄 Token expired → refreshing...");
+
+    try {
+      const { accessToken: newToken } = await refreshAccessToken();
+
+      response = await guardedFetch(`${env.apiGatewayUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${newToken}` },
+      });
+    } catch (e) {
+      console.error("❌ Refresh failed", e);
+      throw new Error("Session expired");
+    }
+  }
+
   const data = await safeJson(response);
-  if (!response.ok) throw new Error(data?.message || "Erreur /auth/me");
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Erreur /auth/me");
+  }
+
   return data;
 }

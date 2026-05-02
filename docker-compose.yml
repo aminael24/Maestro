@@ -20,7 +20,6 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     ports:
       - "29092:29092"
@@ -38,11 +37,6 @@ services:
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     volumes:
       - keycloak_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d ${KEYCLOAK_DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - maestro-net
 
@@ -52,34 +46,20 @@ services:
     container_name: keycloak
     restart: always
     depends_on:
-      keycloak-db:
-        condition: service_healthy
+      - keycloak-db
     command: start-dev
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD}
       KC_DB: postgres
       KC_DB_URL_HOST: keycloak-db
-      KC_DB_URL_PORT: 5432
       KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME}
       KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME: "localhost"
-      KC_HOSTNAME_PORT: "8080"
-      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
-      KC_HEALTH_ENABLED: "true"
     ports:
       - "8080:8080"
-    volumes:
-      - ./infra/keycloak/themes:/opt/keycloak/themes
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
     networks:
       - maestro-net
 
@@ -92,15 +72,8 @@ services:
       POSTGRES_DB: ${USER_DB_NAME}
       POSTGRES_USER: ${USER_DB_USER}
       POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
-    volumes:
-      - user_db_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER} -d ${USER_DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - maestro-net
 
@@ -113,11 +86,6 @@ services:
       POSTGRES_DB: workspace_db
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin_password
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d workspace_db"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
     networks:
       - maestro-net
 
@@ -126,9 +94,10 @@ services:
     build:
       context: ./services/WorkspaceService
     container_name: workspace-service
+    restart: always
     depends_on:
-      workspace-db:
-        condition: service_healthy
+      - workspace-db
+      - kafka
     environment:
       ASPNETCORE_URLS: http://+:8080
       DATABASE_URL: Host=workspace-db;Port=5432;Database=workspace_db;Username=admin;Password=admin_password
@@ -141,11 +110,12 @@ services:
     build:
       context: ./services/RunnerService
     container_name: runner-service
+    restart: always
     depends_on:
       - kafka
     environment:
       ASPNETCORE_URLS: http://+:8080
-      KAFKA_BROKER: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     networks:
       - maestro-net
 
@@ -156,31 +126,35 @@ services:
     container_name: api-gateway
     restart: always
     depends_on:
-      keycloak:
-        condition: service_started
-      user-db:
-        condition: service_healthy
-      workspace-service:
-        condition: service_started
+      - keycloak
+      - user-db
+      - workspace-service
     environment:
       ASPNETCORE_URLS: http://+:8080
-      KAFKA_BROKER: kafka:9092
+
+      # FIXED Kafka var
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
       KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
       KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+
       KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
       KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
       KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
+
       KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
       KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
+
       USER_DB_HOST: ${USER_DB_HOST}
       USER_DB_PORT: ${USER_DB_PORT}
       USER_DB_DATABASE: ${USER_DB_DATABASE}
       USER_DB_USERNAME: ${USER_DB_USERNAME}
       USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
+
       WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
       AI_SERVICE_URL: http://host.docker.internal:8000
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
@@ -193,6 +167,10 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "5050:80"
     networks:
@@ -203,8 +181,15 @@ services:
     build:
       context: ./frontend
     container_name: frontend
+    restart: always
     ports:
       - "5173:5173"
+    environment:
+      VITE_KEYCLOAK_URL: http://localhost:8080
+      VITE_KEYCLOAK_REALM: maestro
+      VITE_KEYCLOAK_CLIENT_ID: maestro-frontend
+      VITE_FRONTEND_URL: http://localhost:5173
+      VITE_API_GATEWAY_URL: http://localhost:5000
     depends_on:
       - api-gateway
     networks:
@@ -213,9 +198,6 @@ services:
 volumes:
   keycloak_db_data:
   user_db_data:
-  pgadmin_data:
-  uploads_data:
-  projects_data:
 
 networks:
   maestro-net:

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { exchangeCode, getMe } from "../../services/authService";
 import { clearPkceData } from "../../features/auth/authHelpers";
-
+import { exchangeCode, getMe, refreshAccessToken } from "../../services/authService";
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [message, setMessage] = useState("Connexion en cours...");
@@ -48,8 +47,12 @@ export default function AuthCallbackPage() {
           );
         }
 
-        setMessage("Récupération du profil...");
-        const user = await getMe(accessToken);
+     setMessage("Initialisation de la session...");
+
+// 🔥 ALWAYS refresh after login (important)
+const { accessToken: freshToken } = await refreshAccessToken();
+
+const user = await getMe(freshToken);
 
         setSub(user.username || user.keycloakId);
         setMessage("Connexion réussie !");

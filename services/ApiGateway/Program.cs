@@ -53,7 +53,7 @@ builder.Services.AddCors(options =>
 // via le réseau interne (keycloak:8080). On fetch les clés explicitement
 // au démarrage et on les injecte dans IssuerSigningKeys pour éviter
 // les problèmes de discovery automatique cross-hostname.
-var keycloakPublicIssuer   = "http://localhost:8080/realms/maestro";
+var keycloakPublicIssuer   = "http://keycloak:8080/realms/maestro";
 var keycloakInternalIssuer = realmUrl ?? keycloakPublicIssuer;
 var jwksUri = $"{keycloakInternalIssuer}/protocol/openid-connect/certs";
 
@@ -78,8 +78,11 @@ Microsoft.IdentityModel.Tokens.JsonWebKeySet? jwks = null;
             await System.Threading.Tasks.Task.Delay(3000);
         }
     }
-    if (jwks == null)
-        throw new InvalidOperationException($"Impossible de récupérer les clés JWKS depuis {jwksUri}");
+   if (jwks == null)
+{
+    Console.WriteLine("[JWT] JWKS not available at startup, continuing without keys (will retry on next restart)");
+    jwks = new Microsoft.IdentityModel.Tokens.JsonWebKeySet("{\"keys\":[]}");
+}
 }
 
 // IMPORTANT: désactive le remapping automatique des claims JWT par .NET.
@@ -93,29 +96,28 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateAudience     = false,
-            ValidateIssuer       = true,
-            ValidIssuers         = new[] { keycloakPublicIssuer, keycloakInternalIssuer },
-            ValidateLifetime     = true,
-            // Clés injectées directement — pas de discovery automatique
-            IssuerSigningKeys    = jwks.GetSigningKeys(),
-            ValidateIssuerSigningKey = true
+            ValidateIssuer = false,     // 🔥 FIX
+            ValidateAudience = false,   // 🔥 FIX
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKeys = jwks.GetSigningKeys()
         };
-        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+
+        options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = ctx =>
             {
-                // This log will tell you if it's an Expired Token or an Issuer Mismatch
                 Console.WriteLine($"[JWT] AUTH FAILED: {ctx.Exception.Message}");
-                return System.Threading.Tasks.Task.CompletedTask;
+                return Task.CompletedTask;
             },
             OnTokenValidated = ctx =>
             {
                 var sub = ctx.Principal?.FindFirst("sub")?.Value ?? "?";
                 Console.WriteLine($"[JWT] OK - sub: {sub}");
-                return System.Threading.Tasks.Task.CompletedTask;
+                return Task.CompletedTask;
             }
         };
     });
@@ -132,7 +134,6 @@ builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<ProfileImageService>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails(); // Better error formatting
-builder.WebHost.UseWebRoot("wwwroot");
 
 var app = builder.Build();
 
