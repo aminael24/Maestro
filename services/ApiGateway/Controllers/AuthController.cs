@@ -48,7 +48,7 @@ public class AuthController : ControllerBase
     private string FrontendUrl =>
         Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:5173";
 
-    private string PostLoginRedirect => $"{FrontendUrl.TrimEnd('/')}/workspace/projects";
+    private string PostLoginRedirect => $"{FrontendUrl.TrimEnd('/')}/workspace/dashboard";
     private string PostLogoutRedirect => $"{FrontendUrl.TrimEnd('/')}/auth/login";
 
     // ─────────────────────────────────────────────────────────────
