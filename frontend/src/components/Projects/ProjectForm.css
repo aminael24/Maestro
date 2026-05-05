@@ -1,0 +1,177 @@
+.project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.project-form__title {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.75rem;
+  font-weight: 400;
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+  border-bottom: 0.125rem solid var(--gold);
+  display: inline-block;
+  padding-bottom: 0.5rem;
+}
+
+/* GROUP */
+.project-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: revealUp 0.4s ease forwards;
+}
+
+/* Staggered animation for inputs */
+.project-form__group:nth-child(2) { animation-delay: 0.1s; }
+.project-form__group:nth-child(3) { animation-delay: 0.15s; }
+.project-form__row:nth-child(4) { animation: revealUp 0.4s ease 0.2s forwards; opacity: 0; }
+.project-form__group:nth-child(5) { animation-delay: 0.25s; }
+.project-form__group:nth-child(6) { animation-delay: 0.3s; }
+
+.project-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* LABEL */
+.project-form__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* INPUT */
+.project-form__input,
+.project-form__textarea {
+  padding: 0.8rem 1rem;
+  border: 0.0625rem solid rgba(8,58,79,0.1);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  background: #ffffff; /* Blanc pur pour la clarté */
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.project-form__input::placeholder,
+.project-form__textarea::placeholder {
+  color: #a0aec0;
+}
+
+.project-form__input:focus,
+.project-form__textarea:focus {
+  background: #ffffff;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 4px rgba(72,126,140,0.08);
+}
+
+.project-form__textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+/* SELECT */
+select.project-form__input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23487E8C'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m19 9-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2rem;
+}
+
+/* FIXED TECH VALUE */
+.project-form__fixed-value {
+  padding: 0.8rem 1rem;
+  background: #f1f3f5;
+  border: 1px solid rgba(8, 58, 79, 0.05);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-mid);
+  font-weight: 600;
+}
+
+/* CHECKBOX */
+.project-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+/* ACTIONS */
+.project-form__actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(8,58,79,0.05);
+}
+
+.project-form__button {
+  flex: 1;
+  padding: 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+
+.project-form__button--cancel {
+  background: #f1f1f1;
+  color: var(--text-mid);
+}
+
+.project-form__button--cancel:hover {
+  background: #e5e5e5;
+}
+
+.project-form__button:not(.project-form__button--cancel) {
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 4px 12px rgba(8,58,79,0.15);
+}
+
+.project-form__button:not(.project-form__button--cancel):hover {
+  background: var(--navy-mid);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(8,58,79,0.2);
+}
+
+.project-form__error {
+  background: #fde8e8;
+  color: #a32020;
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}

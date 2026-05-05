@@ -1,0 +1,323 @@
+services:
+  # ── Zookeeper ────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - maestro-net
+
+  # ── Kafka ────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "29092:29092"
+    networks:
+      - maestro-net
+
+  # ── Keycloak DB ────────────────────────────────────────────
+  keycloak-db:
+    image: postgres:16
+    container_name: keycloak-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d ${KEYCLOAK_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    networks:
+      - maestro-net
+
+  # ── Keycloak ───────────────────────────────────────────────
+  # Healthcheck = on demande à Keycloak l'URL JWKS de notre realm.
+  # Tant que cette URL ne renvoie pas un 200, on considère Keycloak
+  # PAS prêt. Les services downstream (workspace-service,
+  # api-gateway) attendent ce healthcheck avant de démarrer.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.5
+    container_name: keycloak
+    restart: always
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: "localhost"
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/themes:/opt/keycloak/themes
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - |
+          exec 3<>/dev/tcp/127.0.0.1/8080 && \
+          printf 'GET /realms/maestro/protocol/openid-connect/certs HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && \
+          head -n1 <&3 | grep -q '200'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - maestro-net
+
+  # ── User DB ────────────────────────────────────────────────
+  user-db:
+    image: postgres:16
+    container_name: user-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${USER_DB_NAME}
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER} -d ${USER_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - maestro-net
+
+  # ── API Gateway ────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./services/ApiGateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: always
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+      workspace-service:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+
+      KAFKA_BROKER: kafka:9092
+
+      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+      KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
+      KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
+
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
+      KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
+
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+      GATEWAY_PUBLIC_URL: ${GATEWAY_PUBLIC_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+
+      USER_DB_HOST: ${USER_DB_HOST}
+      USER_DB_PORT: ${USER_DB_PORT}
+      USER_DB_DATABASE: ${USER_DB_DATABASE}
+      USER_DB_USERNAME: ${USER_DB_USERNAME}
+      USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
+      WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
+      AI_SERVICE_URL: http://host.docker.internal:8000
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+    ports:
+      - "5000:8080"
+    volumes:
+      - uploads_data:/app/wwwroot/uploads
+    networks:
+      - maestro-net
+
+  # ── Workspace Service ──────────────────────────────────────
+  workspace-service:
+    build:
+      context: ./services/WorkspaceService
+      dockerfile: Dockerfile
+    container_name: workspace-service
+    init: true
+    restart: always
+    depends_on:
+      workspace-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      DATABASE_URL: Host=workspace-db;Port=5432;Database=workspace_db;Username=admin;Password=admin_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - projects_data:/app/projects
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - maestro-net
+
+  # ── Workspace DB ───────────────────────────────────────────
+  # AVANT : aucun volume → tes projets disparaissaient à chaque
+  # `docker compose down` (Postgres écrivait dans la couche
+  # éphémère du container).
+  # MAINTENANT : volume `workspace_db_data` monté sur
+  # /var/lib/postgresql/data → les données survivent aux
+  # arrêts/redémarrages des containers.
+  workspace-db:
+    image: postgres:16
+    container_name: workspace-db
+    restart: always
+    environment:
+      POSTGRES_DB: workspace_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d workspace_db"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - workspace_db_data:/var/lib/postgresql/data
+    networks:
+      - maestro-net
+
+  # ── Runner Service ──────────────────────────────────────
+  runner-service:
+    build:
+      context: ./services/RunnerService
+      dockerfile: Dockerfile
+    container_name: runner-service
+    restart: always
+    depends_on:
+      - kafka
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      KAFKA_BROKER: kafka:9092
+    networks:
+      - maestro-net
+
+  # ── EF Migrations (one-shot) ───────────────────────────────
+  api-gateway-migrations:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: api-gateway-migrations
+    working_dir: /src
+    volumes:
+      - ./services/ApiGateway:/src
+    depends_on:
+      user-db:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
+      KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_TOKEN_ENDPOINT: ${KEYCLOAK_ADMIN_TOKEN_ENDPOINT}
+      KEYCLOAK_ADMIN_API_BASE_URL: ${KEYCLOAK_ADMIN_API_BASE_URL}
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
+      KEYCLOAK_FRONTEND_REDIRECT_URI: ${KEYCLOAK_FRONTEND_REDIRECT_URI}
+      USER_DB_HOST: ${USER_DB_HOST}
+      USER_DB_PORT: ${USER_DB_PORT}
+      USER_DB_DATABASE: ${USER_DB_DATABASE}
+      USER_DB_USERNAME: ${USER_DB_USERNAME}
+      USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
+      WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
+    networks:
+      - maestro-net
+    command: ["dotnet", "ef", "database", "update"]
+
+  # ── pgAdmin ────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - maestro-net
+
+  # ── Frontend ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+      VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM}
+      VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
+      VITE_FRONTEND_URL: ${VITE_FRONTEND_URL}
+      VITE_API_GATEWAY_URL: ${VITE_API_GATEWAY_URL}
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      - api-gateway
+    networks:
+      - maestro-net
+
+volumes:
+  keycloak_db_data:
+  user_db_data:
+  pgadmin_data:
+  uploads_data:
+  projects_data:
+  workspace_db_data:        # ← nouveau : persistance des projets
+
+networks:
+  maestro-net:
+    driver: bridge

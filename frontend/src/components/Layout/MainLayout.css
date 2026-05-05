@@ -1,0 +1,18 @@
+.main-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-layout__content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: #F5EFEB; /* Couleur Sand */
+}
+
+.page-wrapper {
+  flex: 1;
+  overflow-y: auto; /* 🔥 SCROLL PAGE */
+}
