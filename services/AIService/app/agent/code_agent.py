@@ -68,11 +68,15 @@ Règles STRICTES :
     except Exception as e:
         raise RuntimeError(f"Erreur Groq : {str(e)}")
 
-    sql_match        = re.search(r"### SQL\n```(?:sql)?\n([\s\S]*?)```",                    raw)
-    model_match      = re.search(r"### MODEL\n```(?:javascript|js)?\n([\s\S]*?)```",        raw)
-    controller_match = re.search(r"### CONTROLLER\n```(?:javascript|js)?\n([\s\S]*?)```",   raw)
-    routes_match     = re.search(r"### ROUTES\n```(?:javascript|js)?\n([\s\S]*?)```",       raw)
-    frontend_match   = re.search(r"### FRONTEND\n```(?:jsx|js|react|javascript)?\n([\s\S]*?)```", raw)
+    print("=== RAW RESPONSE ===")
+    print(raw)
+    print("=== END RAW ===")
+
+    sql_match        = re.search(r"#{1,3}\s*SQL\s*\n```(?:sql)?\n([\s\S]*?)```",                    raw, re.IGNORECASE)
+    model_match      = re.search(r"#{1,3}\s*MODEL\s*\n```(?:javascript|js)?\n([\s\S]*?)```",        raw, re.IGNORECASE)
+    controller_match = re.search(r"#{1,3}\s*CONTROLLER\s*\n```(?:javascript|js)?\n([\s\S]*?)```",   raw, re.IGNORECASE)
+    routes_match     = re.search(r"#{1,3}\s*ROUTES\s*\n```(?:javascript|js)?\n([\s\S]*?)```",       raw, re.IGNORECASE)
+    frontend_match   = re.search(r"#{1,3}\s*FRONTEND\s*\n```(?:jsx|js|react|javascript)?\n([\s\S]*?)```", raw, re.IGNORECASE)
     exp_match        = re.search(r"EXPLICATION:\s*(.+)", raw, re.DOTALL)
 
     return CodeGenResponse(
@@ -126,7 +130,6 @@ Fichier cible : {target_label}"""
     except Exception as e:
         raise RuntimeError(f"Erreur Groq : {str(e)}")
 
-    # Nettoyer les balises markdown si l'IA en renvoie
     clean = re.sub(r"```(?:sql|javascript|jsx|js|react)?\n?", "", raw)
     clean = re.sub(r"```", "", clean).strip()
 
