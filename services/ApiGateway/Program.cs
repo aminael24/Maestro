@@ -377,6 +377,32 @@ app.MapGet("/api/projects/{id}/files/content", async (string id, string path, Ht
     }
 }).RequireAuthorization();
 
+app.MapPut("/api/projects/{id}/files/content", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+ 
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
+ 
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Put, $"{workspaceServiceUrl}/internal/projects/{id}/files/content");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+ 
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to save file content.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
 // ── DEPLOY-SERVICE proxy (with token exchange) ──────────────
 app.MapPost("/api/deploy", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
 {

@@ -365,3 +365,25 @@
     padding: 1.8rem 1.5rem;
   }
 }
+
+/* Ajouter ces règles dans ProjectCard.css
+   juste après .project-card__delete */
+ 
+.project-card__edit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--text-mid);
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+  margin-right: 0.25rem;
+  line-height: 1;
+}
+ 
+.project-card__edit:hover {
+  background: rgba(72, 126, 140, 0.15); /* teal léger */
+  color: var(--teal);
+}
+ 
