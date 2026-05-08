@@ -79,9 +79,13 @@
       </div>
     </#if>
 
-    <#if message?has_content && message.type = 'success'>
+    <#-- ═══ Tous les autres messages (info, success) en français en dur
+         pour ne PAS afficher "You need to change your password" en anglais ═══
+         Keycloak peut envoyer un message de type 'info' avec ce texte
+         qu'on remplace ici par notre version FR. -->
+    <#if message?has_content && (message.type = 'success' || message.type = 'info')>
       <div class="maestro-alert maestro-alert-success">
-        ${kcSanitize(message.summary)?no_esc}
+        Vous devez définir un nouveau mot de passe pour activer votre compte.
       </div>
     </#if>
 

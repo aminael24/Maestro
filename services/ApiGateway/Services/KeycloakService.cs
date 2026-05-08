@@ -14,6 +14,12 @@ public class KeycloakService
         _httpClientFactory = httpClientFactory;
     }
 
+    /// <summary>
+    /// Variante publique pour les autres services (PasswordResetService).
+    /// </summary>
+    public Task<string> GetAdminTokenPublicAsync(CancellationToken cancellationToken = default)
+        => GetAdminTokenAsync(cancellationToken);
+
     private async Task<string> GetAdminTokenAsync(CancellationToken cancellationToken = default)
     {
         var tokenEndpoint = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_TOKEN_ENDPOINT")

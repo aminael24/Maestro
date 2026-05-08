@@ -150,6 +150,7 @@ builder.Services.AddScoped<LocalUserService>();
 builder.Services.AddScoped<RegisterService>();
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<ProfileImageService>();
+builder.Services.AddScoped<PasswordResetService>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails(); // Better error formatting
 builder.WebHost.UseWebRoot("wwwroot");
@@ -194,6 +195,29 @@ app.UseStaticFiles(new StaticFileOptions
 // header BEFORE JwtBearer authentication runs. This is what makes the
 // frontend's "no localStorage, only cookies" flow work — the SPA never
 // sends a Bearer header but every protected endpoint still sees one.
+// ── No-store cache middleware ───────────────────────────────
+//
+// Empêche le navigateur de servir une réponse mise en cache après
+// déconnexion (notamment via le bouton "Retour" du navigateur).
+// Posé sur /auth/* et /api/* — les pages publiques restent
+// cacheables normalement.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? "";
+    if (path.StartsWith("/auth", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api",  StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+            context.Response.Headers["Pragma"]        = "no-cache";
+            context.Response.Headers["Expires"]       = "0";
+            return Task.CompletedTask;
+        });
+    }
+    await next();
+});
+
 app.UseMiddleware<ApiGateway.Services.CookieToBearerMiddleware>();
 
 app.UseAuthentication();

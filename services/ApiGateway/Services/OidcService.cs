@@ -4,16 +4,17 @@ using ApiGateway.Models;
 namespace ApiGateway.Services;
 
 /// <summary>
-/// OIDC client for the ApiGateway, talking to Keycloak as a *confidential*
-/// client. The frontend is no longer involved in the code exchange and
-/// no longer needs to do PKCE — the browser just follows redirects.
+/// OIDC client pour l'ApiGateway, parle à Keycloak en client *confidentiel*.
+/// Le frontend n'est plus impliqué dans l'échange de code et n'a plus
+/// besoin de PKCE — le navigateur suit juste les redirections.
 ///
-/// Reads from environment variables:
-///   KEYCLOAK_REALM_URL        – e.g. http://keycloak:8080/realms/maestro
+/// Lit ces variables d'environnement :
+///   KEYCLOAK_REALM_URL        – ex: http://keycloak:8080/realms/maestro
 ///   KEYCLOAK_TOKEN_ENDPOINT   – /protocol/openid-connect/token
-///   KEYCLOAK_CLIENT_ID        – confidential client id (e.g. maestro-api-gateway)
-///   KEYCLOAK_CLIENT_SECRET    – confidential client secret
-///   GATEWAY_PUBLIC_URL        – e.g. http://localhost:5000  (used as redirect_uri)
+///   KEYCLOAK_CLIENT_ID        – id du client confidentiel (maestro-api-gateway)
+///   KEYCLOAK_CLIENT_SECRET    – secret du client confidentiel
+///   GATEWAY_PUBLIC_URL        – ex: http://localhost:5000  (pour redirect_uri)
+///   KEYCLOAK_PUBLIC_URL       – ex: http://localhost:8080  (URL côté navigateur)
 /// </summary>
 public class OidcService
 {
@@ -27,17 +28,21 @@ public class OidcService
     }
 
     /// <summary>
-    /// Builds the URL that the browser is redirected to at /auth/login.
+    /// Construit l'URL vers laquelle le navigateur est redirigé à /auth/login.
     /// </summary>
-    public string BuildAuthorizationUrl(string state)
+    /// <param name="state">Anti-CSRF, à recroiser au callback.</param>
+    /// <param name="idpHint">
+    /// Optionnel : alias d'un Identity Provider configuré dans Keycloak
+    /// (ex: "google", "github"). Si fourni, Keycloak shunte sa page de
+    /// login standard et envoie l'utilisateur directement chez le
+    /// provider externe.
+    /// </param>
+    public string BuildAuthorizationUrl(string state, string? idpHint = null)
     {
-        var realmUrl = RequireEnv("KEYCLOAK_REALM_URL");
-        var clientId = RequireEnv("KEYCLOAK_CLIENT_ID");
+        var realmUrl    = RequireEnv("KEYCLOAK_REALM_URL");
+        var clientId    = RequireEnv("KEYCLOAK_CLIENT_ID");
         var redirectUri = GetGatewayCallbackUri();
 
-        // Keycloak's external (browser-facing) issuer URL is built from the
-        // public base, *not* the docker-internal one. We swap the host part
-        // because the browser needs to reach Keycloak on localhost:8080.
         var authEndpoint = ToBrowserFacingUrl(realmUrl) + "/protocol/openid-connect/auth";
 
         var qs = new Dictionary<string, string?>
@@ -47,7 +52,20 @@ public class OidcService
             ["response_type"] = "code",
             ["scope"]         = "openid profile email",
             ["state"]         = state,
+            // Force la locale Keycloak sur le français pour que les
+            // messages des templates (.ftl) et les surcharges
+            // messages_fr.properties soient bien utilisés, peu importe
+            // l'Accept-Language du navigateur.
+            ["kc_locale"]     = "fr",
         };
+
+        if (!string.IsNullOrWhiteSpace(idpHint))
+        {
+            // kc_idp_hint = alias EXACT d'un Identity Provider configuré
+            // dans la console Keycloak (Identity Providers → Add provider).
+            // Si l'alias n'existe pas, Keycloak ignore le paramètre.
+            qs["kc_idp_hint"] = idpHint;
+        }
 
         var query = string.Join("&",
             qs.Where(kv => !string.IsNullOrEmpty(kv.Value))
@@ -57,8 +75,8 @@ public class OidcService
     }
 
     /// <summary>
-    /// Exchanges an authorization code for tokens. Uses client_secret
-    /// (confidential client) — no PKCE needed.
+    /// Échange un code d'autorisation contre des tokens.
+    /// Client confidentiel → pas de PKCE.
     /// </summary>
     public async Task<OidcTokenSet> ExchangeCodeAsync(
         string code,
@@ -97,7 +115,7 @@ public class OidcService
     }
 
     /// <summary>
-    /// Uses a refresh_token to obtain a new token set. Confidential client.
+    /// Utilise un refresh_token pour obtenir un nouveau set de tokens.
     /// </summary>
     public async Task<OidcTokenSet> RefreshTokenAsync(
         string refreshToken,
@@ -130,12 +148,67 @@ public class OidcService
     }
 
     /// <summary>
-    /// Returns the URL the browser should be sent to in order to log out
-    /// of Keycloak. id_token is passed as id_token_hint when available.
+    /// Révoque la session Keycloak en back-channel (sans rediriger le
+    /// navigateur). C'est ce qui kill VRAIMENT la session côté serveur :
+    /// même si l'utilisateur garde un cookie de session SSO, il ne peut
+    /// pas s'en servir ailleurs.
+    ///
+    /// À appeler avant de clear les cookies maestro_*.
+    /// </summary>
+    public async Task RevokeRefreshTokenAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        var realmUrl     = RequireEnv("KEYCLOAK_REALM_URL");
+        var clientId     = RequireEnv("KEYCLOAK_CLIENT_ID");
+        var clientSecret = RequireEnv("KEYCLOAK_CLIENT_SECRET");
+
+        // Logout endpoint accepte aussi un POST avec refresh_token =
+        // back-channel logout, sans redirect navigateur.
+        var logoutEndpoint = $"{realmUrl}/protocol/openid-connect/logout";
+
+        var form = new Dictionary<string, string>
+        {
+            ["client_id"]     = clientId,
+            ["client_secret"] = clientSecret,
+            ["refresh_token"] = refreshToken,
+        };
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            var response = await client.PostAsync(
+                logoutEndpoint,
+                new FormUrlEncodedContent(form),
+                cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("[OIDC] Backchannel logout OK (session Keycloak invalidée)");
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning("[OIDC] Backchannel logout returned {Status}: {Body}",
+                    response.StatusCode, body);
+            }
+        }
+        catch (Exception ex)
+        {
+            // best effort : si Keycloak est down, on ne bloque pas
+            // le logout local côté gateway/SPA.
+            _logger.LogWarning(ex, "[OIDC] Backchannel logout failed (best effort)");
+        }
+    }
+
+    /// <summary>
+    /// Construit l'URL de fin de session (front-channel). Quand le
+    /// navigateur la suit, Keycloak clear ses propres cookies de session
+    /// SSO côté navigateur (AUTH_SESSION_ID, KEYCLOAK_IDENTITY).
     /// </summary>
     public string BuildEndSessionUrl(string? idToken, string postLogoutRedirectUri)
     {
-        var realmUrl = RequireEnv("KEYCLOAK_REALM_URL");
+        var realmUrl   = RequireEnv("KEYCLOAK_REALM_URL");
         var endSession = ToBrowserFacingUrl(realmUrl) + "/protocol/openid-connect/logout";
 
         var qs = new Dictionary<string, string?>
@@ -173,10 +246,6 @@ public class OidcService
         Environment.GetEnvironmentVariable(name)
         ?? throw new InvalidOperationException($"{name} manquant.");
 
-    /// <summary>
-    /// Returns the redirect_uri the gateway registers with Keycloak.
-    /// Defaults to http://localhost:5000/auth/callback for local dev.
-    /// </summary>
     private static string GetGatewayCallbackUri()
     {
         var publicUrl = Environment.GetEnvironmentVariable("GATEWAY_PUBLIC_URL")
@@ -196,12 +265,9 @@ public class OidcService
         var publicBase = Environment.GetEnvironmentVariable("KEYCLOAK_PUBLIC_URL");
         if (string.IsNullOrEmpty(publicBase))
         {
-            // Fallback: replace docker hostname "keycloak" with localhost.
             return realmUrl.Replace("//keycloak:", "//localhost:");
         }
 
-        // realmUrl looks like  http://keycloak:8080/realms/maestro
-        // we want              {publicBase}/realms/maestro
         var parsed = new Uri(realmUrl);
         return publicBase.TrimEnd('/') + parsed.AbsolutePath;
     }

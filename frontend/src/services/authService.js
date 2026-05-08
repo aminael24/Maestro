@@ -4,12 +4,12 @@ import { guardedFetch } from "../utils/apiGuard";
 // ═══════════════════════════════════════════════════════════════
 //  authService – cookie-based, no localStorage, no PKCE.
 //
-//  Every function here uses `credentials: "include"` so the browser
-//  attaches the gateway-managed HttpOnly cookies. The frontend
-//  never sees any token.
+//  Toutes les fonctions utilisent `credentials: "include"` pour que
+//  le navigateur attache les cookies HttpOnly gérés par le gateway.
+//  Le frontend ne voit jamais de token.
 // ═══════════════════════════════════════════════════════════════
 
-/** Read body safely – handles empty responses without throwing. */
+/** Lit le body en gérant les réponses vides sans throw. */
 async function safeJson(response) {
   const text = await response.text();
   if (!text || text.trim() === "") return {};
@@ -22,15 +22,32 @@ async function safeJson(response) {
   }
 }
 
-// ── Login ──────────────────────────────────────────────────────
+// ── Login (Keycloak login standard) ─────────────────────────────
 
 /**
- * Triggers a full-page navigation to the gateway's /auth/login.
- * The gateway will redirect to Keycloak and, after authentication,
- * back to /workspace/projects with the auth cookies set.
+ * Full-page navigation vers /auth/login du gateway.
+ * Le gateway redirige vers Keycloak (page username/MdP).
  */
 export function redirectToGatewayLogin() {
   window.location.href = `${env.apiGatewayUrl}/auth/login`;
+}
+
+// ── Login social ───────────────────────────────────────────────
+
+/**
+ * Login Google via Keycloak Identity Provider.
+ * Le gateway ajoute kc_idp_hint=google → Keycloak shunte sa page de
+ * login et envoie l'utilisateur direct chez Google.
+ */
+export function redirectToGoogleLogin() {
+  window.location.href = `${env.apiGatewayUrl}/auth/login/google`;
+}
+
+/**
+ * Login GitHub via Keycloak Identity Provider.
+ */
+export function redirectToGitHubLogin() {
+  window.location.href = `${env.apiGatewayUrl}/auth/login/github`;
 }
 
 // ── Register ───────────────────────────────────────────────────
@@ -46,12 +63,29 @@ export async function registerUser(formData) {
   return data;
 }
 
-// ── Refresh (optional – the gateway can refresh transparently) ─
+// ── Forgot password ────────────────────────────────────────────
 
 /**
- * Forces a refresh of the access cookie. Useful after a 401.
- * Returns true on success, false if the session is dead.
+ * Demande à Keycloak (via le gateway) d'envoyer un email de reset.
+ * Réponse TOUJOURS 200 (anti-énumération).
  */
+export async function requestPasswordReset(email) {
+  const response = await guardedFetch(
+    `${env.apiGatewayUrl}/auth/forgot-password`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+      credentials: "include",
+    }
+  );
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data?.message || "Erreur forgot password");
+  return data;
+}
+
+// ── Refresh ────────────────────────────────────────────────────
+
 export async function refreshAccessToken() {
   const response = await guardedFetch(`${env.apiGatewayUrl}/auth/refresh`, {
     method: "POST",
@@ -60,36 +94,63 @@ export async function refreshAccessToken() {
   return response.ok;
 }
 
-// ── Logout ─────────────────────────────────────────────────────
+// ── Logout COMPLET (kill session Keycloak) ─────────────────────
 
 /**
- * Clears the auth cookies on the gateway.
- * Returns true even if the network call fails — the user wants out.
+ * Logout en 2 phases :
+ *
+ *   1. POST /auth/logout au gateway
+ *      → le gateway révoque la session côté Keycloak (back-channel)
+ *      → le gateway clear nos cookies maestro_*
+ *      → le gateway renvoie logoutUrl = URL Keycloak end_session
+ *
+ *   2. window.location = logoutUrl
+ *      → le navigateur visite Keycloak end_session
+ *      → Keycloak clear ses cookies de session SSO côté navigateur
+ *      → Keycloak redirige vers /auth/login (post_logout_redirect_uri)
+ *
+ * Sans la phase 2, l'utilisateur garde un cookie SSO Keycloak et un
+ * re-login serait silencieux (auto-loggué). Avec la phase 2, l'utilisateur
+ * est VRAIMENT déconnecté partout.
  */
 export async function logout() {
+  let logoutUrl = null;
+
   try {
-    await guardedFetch(`${env.apiGatewayUrl}/auth/logout`, {
+    const response = await guardedFetch(`${env.apiGatewayUrl}/auth/logout`, {
       method: "POST",
+      headers: { Accept: "application/json" },
       credentials: "include",
     });
+    if (response.ok) {
+      const data = await safeJson(response);
+      logoutUrl = data?.logoutUrl || null;
+    }
   } catch {
-    // best effort
+    // best effort — l'utilisateur veut sortir, on ne le bloque pas
   }
-  return true;
+
+  // ─── Anti retour-arrière ──────────────────────────────────────
+  // On vide l'historique de cette session de navigation autant
+  // que possible. window.location.replace() ne crée pas de nouvelle
+  // entrée dans l'historique (contrairement à .href = ...) :
+  // une fois sur la landing page après logout, le bouton "back"
+  // ne ramène plus sur les pages connectées.
+  //
+  // De plus, le backend envoie Cache-Control: no-store sur les
+  // pages protégées, donc même si le navigateur tente de réafficher
+  // une page depuis son cache via "back", elle sera re-fetchée et
+  // le ProtectedRoute redirigera vers /auth/login.
+  if (logoutUrl) {
+    window.location.replace(logoutUrl);
+  } else {
+    // Fallback : on retourne au moins sur la landing
+    window.location.replace("/");
+  }
 }
 
 // ── Profile ────────────────────────────────────────────────────
 
-/**
- * Fetches the authenticated user. The browser sends the
- * maestro_access_token cookie automatically (credentials: include).
- *
- * Throws on 401 — the caller is expected to redirect to /auth/login.
- *
- * Note: the optional `_legacyToken` argument is accepted for backwards
- * compatibility with old call sites that used to pass an access
- * token; it is silently ignored.
- */
 export async function getMe(/* _legacyToken */) {
   const response = await guardedFetch(`${env.apiGatewayUrl}/auth/me`, {
     credentials: "include",
@@ -101,12 +162,6 @@ export async function getMe(/* _legacyToken */) {
 
 // ── Backwards-compat shim ──────────────────────────────────────
 
-/**
- * Legacy export – the frontend no longer exchanges codes. The
- * gateway's /auth/callback handles the exchange and sets cookies.
- * Kept as a no-op so old imports don't crash; new code should not
- * call this.
- */
 export async function exchangeCode() {
   return {};
 }

@@ -5,11 +5,11 @@ import DashboardPage from "../../pages/DashboardPage";
 import ProjectsPage from "../../pages/ProjectsPage";
 import AiEditorPage from "../../pages/Workspace/AiEditorPage";
 import ProjectWorkspacePage from "../../pages/Workspace/ProjectWorkspacePage";
-import LoginPage from "../../pages/Auth/LoginPage";
 import RegisterPage from "../../pages/Auth/RegisterPage";
+import ForgotPasswordPage from "../../pages/Auth/ForgotPasswordPage";
 import AuthCallbackPage from "../../pages/Auth/AuthCallbackPage";
 import LandingPage from "../../pages/Landing/LandingPage";
-import { isDevMode } from "../../utils/env";
+import { isDevMode, env } from "../../utils/env";
 import { getMe } from "../../services/authService";
 
 // ═══════════════════════════════════════════════════════════════
@@ -21,12 +21,46 @@ function WorkspacePage() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  GatewayLoginRedirect
+//
+//  La page de login Maestro est servie DIRECTEMENT par Keycloak
+//  via le thème "maestro" (login.ftl). Cette route /auth/login
+//  côté React redirige donc immédiatement vers le gateway, qui
+//  enchaîne sur Keycloak.
+//
+//  On utilise window.location.replace pour ne pas garder cette
+//  étape dans l'historique du navigateur (sinon le bouton "back"
+//  ramène ici en boucle).
+// ═══════════════════════════════════════════════════════════════
+function GatewayLoginRedirect() {
+  useEffect(() => {
+    window.location.replace(`${env.apiGatewayUrl}/auth/login`);
+  }, []);
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "#0b1020",
+        color: "rgba(255,255,255,0.6)",
+        fontFamily: "Inter, system-ui, sans-serif",
+        fontSize: 14,
+      }}
+    >
+      Redirection vers la page de connexion…
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  ProtectedRoute
 //
 //  On ne peut pas lire l'access token (cookie HttpOnly). On ping
 //  donc /auth/me :
 //    - 200 → session vivante, on rend les enfants
 //    - 401 → pas de session, redirection vers /auth/login
+//            (qui redirige lui-même vers Keycloak)
 // ═══════════════════════════════════════════════════════════════
 function ProtectedRoute({ children }) {
   const [authed, setAuthed] = useState(null); // null = en cours
@@ -73,10 +107,9 @@ function ProtectedRoute({ children }) {
 //
 //  Pour la route "/", on affiche la LandingPage si l'utilisateur
 //  n'est pas authentifié, sinon on le redirige directement vers
-//  son workspace. Le ping /auth/me est silencieux.
+//  son workspace.
 // ═══════════════════════════════════════════════════════════════
 function LandingOrRedirect() {
-  // null = vérification, false = anonyme, true = authentifié
   const [authed, setAuthed] = useState(null);
 
   useEffect(() => {
@@ -94,9 +127,8 @@ function LandingOrRedirect() {
     };
   }, []);
 
-  // Pendant la vérif on ne FLASH PAS la landing : on rend rien (très bref).
   if (authed === null) return null;
-  if (authed) return <Navigate to="/workspace/projects" replace />;
+  if (authed) return <Navigate to="/workspace/dashboard" replace />;
   return <LandingPage />;
 }
 
@@ -118,6 +150,7 @@ export default function AppRouter() {
             <Route path="/" element={<Navigate to="/workspace/ai-generator" replace />} />
             <Route path="/auth/login" element={<Navigate to="/workspace/ai-generator" replace />} />
             <Route path="/auth/register" element={<Navigate to="/workspace/ai-generator" replace />} />
+            <Route path="/auth/forgot-password" element={<Navigate to="/workspace/ai-generator" replace />} />
             <Route path="/auth/callback" element={<Navigate to="/workspace/ai-generator" replace />} />
           </>
         ) : (
@@ -125,11 +158,14 @@ export default function AppRouter() {
             {/* Page d'entrée publique */}
             <Route path="/" element={<LandingOrRedirect />} />
 
-            {/* Pages d'auth */}
-            <Route path="/auth/login" element={<LoginPage />} />
+            {/* /auth/login → redirige vers Keycloak (page servie par Keycloak via login.ftl) */}
+            <Route path="/auth/login" element={<GatewayLoginRedirect />} />
+
+            {/* Register et forgot password gardent leurs pages React */}
             <Route path="/auth/register" element={<RegisterPage />} />
-            {/* Legacy callback – le gateway gère OIDC, mais on le garde
-                comme entrée défensive (anciens bookmarks). */}
+            <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+
+            {/* Callback OIDC – le gateway le gère mais on garde une route défensive */}
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
           </>
         )}
@@ -143,7 +179,7 @@ export default function AppRouter() {
             </Guard>
           }
         >
-          <Route index element={<Navigate to="projects" replace />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="ai-generator" element={<AiEditorPage />} />

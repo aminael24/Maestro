@@ -8,16 +8,19 @@ using Microsoft.AspNetCore.Mvc;
 namespace ApiGateway.Controllers;
 
 /// <summary>
-/// Single source of truth for the auth flow.
+/// Source unique de vérité pour le flow d'authentification.
 ///
-///   GET  /auth/login      → redirects browser to Keycloak (sets state cookie)
-///   GET  /auth/callback   → exchanges code, sets HttpOnly cookies, redirects to /workspace/projects
-///   POST /auth/refresh    → rotates the refresh token, refreshes the access cookie
-///   POST /auth/logout     → clears cookies and redirects to Keycloak end-session
-///   GET  /auth/me         → reads the access cookie (via middleware) and returns the user
-///   POST /auth/register   → creates a Keycloak user (admin API)
+///   GET  /auth/login              → Keycloak (page de login standard)
+///   GET  /auth/login/google       → Keycloak avec kc_idp_hint=google
+///   GET  /auth/login/github       → Keycloak avec kc_idp_hint=github
+///   GET  /auth/callback           → exchange code, pose cookies, redirect frontend
+///   POST /auth/refresh            → rotate cookies via refresh_token
+///   POST /auth/logout             → révoque session Keycloak + clear cookies
+///   GET  /auth/me                 → infos user (lit cookie via middleware)
+///   POST /auth/register           → création user via Keycloak Admin API
+///   POST /auth/forgot-password    → email de reset via Keycloak Admin API
 ///
-/// Tokens are NEVER returned in JSON. The frontend has no token to keep.
+/// Tokens never returned in JSON. Frontend has no token to keep.
 /// </summary>
 [ApiController]
 [Route("auth")]
@@ -26,6 +29,7 @@ public class AuthController : ControllerBase
     private readonly RegisterService _registerService;
     private readonly LocalUserService _localUserService;
     private readonly OidcService _oidcService;
+    private readonly PasswordResetService _passwordResetService;
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<AuthController> _logger;
 
@@ -33,14 +37,16 @@ public class AuthController : ControllerBase
         RegisterService registerService,
         LocalUserService localUserService,
         OidcService oidcService,
+        PasswordResetService passwordResetService,
         IWebHostEnvironment env,
         ILogger<AuthController> logger)
     {
-        _registerService  = registerService;
-        _localUserService = localUserService;
-        _oidcService      = oidcService;
-        _env              = env;
-        _logger           = logger;
+        _registerService      = registerService;
+        _localUserService     = localUserService;
+        _oidcService          = oidcService;
+        _passwordResetService = passwordResetService;
+        _env                  = env;
+        _logger               = logger;
     }
 
     private bool IsProduction => !_env.IsDevelopment();
@@ -48,35 +54,38 @@ public class AuthController : ControllerBase
     private string FrontendUrl =>
         Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:5173";
 
-    private string PostLoginRedirect => $"{FrontendUrl.TrimEnd('/')}/workspace/dashboard";
-    private string PostLogoutRedirect => $"{FrontendUrl.TrimEnd('/')}/auth/login";
+    private string PostLoginRedirect  => $"{FrontendUrl.TrimEnd('/')}/workspace/dashboard";
+    private string PostLogoutRedirect => $"{FrontendUrl.TrimEnd('/')}/";
 
     // ─────────────────────────────────────────────────────────────
-    // GET /auth/login
-    //
-    //   Generates a CSRF state, drops it in an HttpOnly cookie scoped to
-    //   /auth, and redirects the browser to Keycloak's authorization
-    //   endpoint. The redirect_uri is the gateway's own /auth/callback.
+    // GET /auth/login            → page Keycloak standard
+    // GET /auth/login/google     → kc_idp_hint=google
+    // GET /auth/login/github     → kc_idp_hint=github
     // ─────────────────────────────────────────────────────────────
     [HttpGet("login")]
-    public IActionResult Login()
+    public IActionResult Login()        => StartLoginFlow(idpHint: null);
+
+    [HttpGet("login/google")]
+    public IActionResult LoginGoogle()  => StartLoginFlow(idpHint: "google");
+
+    [HttpGet("login/github")]
+    public IActionResult LoginGitHub()  => StartLoginFlow(idpHint: "github");
+
+    /// <summary>
+    /// Démarre le flow OIDC : pose le state cookie, construit l'URL
+    /// d'autorisation, redirige le navigateur vers Keycloak.
+    /// </summary>
+    private IActionResult StartLoginFlow(string? idpHint)
     {
         var state = GenerateRandomToken();
         AuthCookieHelper.SetOAuthStateCookie(Response, state, IsProduction);
 
-        var url = _oidcService.BuildAuthorizationUrl(state);
+        var url = _oidcService.BuildAuthorizationUrl(state, idpHint);
         return Redirect(url);
     }
 
     // ─────────────────────────────────────────────────────────────
     // GET /auth/callback
-    //
-    //   Keycloak redirects the browser here with ?code=...&state=...
-    //   We:
-    //     1) verify the state against the cookie set at /auth/login,
-    //     2) exchange the code for tokens (confidential client),
-    //     3) drop access/refresh/id-tokens in HttpOnly cookies,
-    //     4) redirect the browser to the SPA's /workspace/projects.
     // ─────────────────────────────────────────────────────────────
     [HttpGet("callback")]
     public async Task<IActionResult> Callback(
@@ -92,14 +101,13 @@ public class AuthController : ControllerBase
 
         if (!string.IsNullOrEmpty(error))
         {
-            _logger.LogWarning("[OIDC] Keycloak returned error: {Error} {Description}", error, errorDescription);
+            _logger.LogWarning("[OIDC] Keycloak returned error: {Error} {Description}",
+                error, errorDescription);
             return RedirectToLoginWithError(error);
         }
 
         if (string.IsNullOrEmpty(code))
-        {
             return RedirectToLoginWithError("missing_code");
-        }
 
         if (string.IsNullOrEmpty(expectedState) || expectedState != state)
         {
@@ -122,6 +130,11 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(tokens.AccessToken))
             return RedirectToLoginWithError("no_access_token");
 
+        // Auto-provisionne le LocalUser quand l'utilisateur arrive via
+        // un IdP social (Google/GitHub) → première connexion = pas
+        // encore de ligne dans la BDD locale.
+        await EnsureLocalUserAsync(tokens.AccessToken, cancellationToken);
+
         AuthCookieHelper.SetAccessTokenCookie(
             Response, tokens.AccessToken, tokens.ExpiresIn, IsProduction);
 
@@ -134,12 +147,55 @@ public class AuthController : ControllerBase
         return Redirect(PostLoginRedirect);
     }
 
+    /// <summary>
+    /// Si c'est la 1ère connexion via IdP social, on crée la ligne
+    /// LocalUser pour pouvoir stocker plus tard la ProfileUrl.
+    /// (ProfileUrl reste null tant que l'utilisateur ne l'a pas complétée.)
+    /// </summary>
+    private async Task EnsureLocalUserAsync(
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var keycloakId = ExtractSubFromJwt(accessToken);
+            if (string.IsNullOrWhiteSpace(keycloakId)) return;
+
+            var existing = await _localUserService.GetByKeycloakIdAsync(keycloakId, cancellationToken);
+            if (existing != null) return;
+
+            await _localUserService.CreateMinimalAsync(keycloakId, profileUrl: null, cancellationToken);
+            _logger.LogInformation("[Auth] LocalUser auto-créé pour Keycloak {Sub}", keycloakId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[Auth] EnsureLocalUserAsync échoué (best effort)");
+        }
+    }
+
+    /// <summary>Décode le sub d'un JWT sans validation (just lecture).</summary>
+    private static string? ExtractSubFromJwt(string jwt)
+    {
+        var parts = jwt.Split('.');
+        if (parts.Length < 2) return null;
+
+        try
+        {
+            var payload = parts[1];
+            var padded = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=')
+                                .Replace('-', '+').Replace('_', '/');
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(padded));
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("sub", out var subEl) ? subEl.GetString() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // POST /auth/refresh
-    //
-    //   The frontend doesn't strictly need this anymore (the gateway can
-    //   refresh transparently) but we keep it so the SPA can force a
-    //   refresh after a 401.
     // ─────────────────────────────────────────────────────────────
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
@@ -174,35 +230,59 @@ public class AuthController : ControllerBase
     // ─────────────────────────────────────────────────────────────
     // POST /auth/logout
     //
-    //   Clears cookies. If the request comes from XHR (i.e. has an
-    //   Accept: application/json header) we just return 200; if it's a
-    //   plain navigation we redirect through Keycloak's end-session.
+    //   Logout COMPLET en 2 phases :
+    //
+    //     Phase 1 — back-channel (côté serveur) :
+    //       Le gateway envoie un POST à Keycloak /protocol/openid-connect/logout
+    //       avec le refresh_token. Keycloak invalide la session SSO côté
+    //       serveur. Même si l'utilisateur tente de réutiliser ses cookies
+    //       de session ailleurs, ils ne marcheront plus.
+    //
+    //     Phase 2 — clear côté navigateur :
+    //       Le gateway clear ses propres cookies maestro_*.
+    //       Le frontend reçoit ensuite logoutUrl (= URL Keycloak end-session)
+    //       et redirige le navigateur dessus pour clear AUSSI les cookies
+    //       de session SSO Keycloak (AUTH_SESSION_ID, KEYCLOAK_IDENTITY).
+    //
+    //   Si appelé en GET (navigation directe) on fait la phase 1 puis on
+    //   redirige direct vers Keycloak end_session.
     // ─────────────────────────────────────────────────────────────
     [HttpPost("logout")]
     [HttpGet("logout")]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
-        var idToken = AuthCookieHelper.GetIdToken(Request);
+        var refreshToken = AuthCookieHelper.GetRefreshToken(Request);
+        var idToken      = AuthCookieHelper.GetIdToken(Request);
+
+        // Phase 1 — back-channel : kill la session côté Keycloak.
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            await _oidcService.RevokeRefreshTokenAsync(refreshToken, cancellationToken);
+        }
+
+        // Clear nos cookies.
         AuthCookieHelper.ClearAllAuthCookies(Response, IsProduction);
 
-        var wantsJson =
-            Request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(Request.Method, "POST", StringComparison.OrdinalIgnoreCase);
+        var isPost = string.Equals(Request.Method, "POST", StringComparison.OrdinalIgnoreCase);
 
-        if (wantsJson)
-            return Ok(new { message = "Déconnecté" });
+        if (isPost)
+        {
+            // Le frontend SPA fait POST. On lui renvoie l'URL Keycloak
+            // end_session et c'est lui qui redirige le navigateur.
+            return Ok(new
+            {
+                message   = "Déconnecté",
+                logoutUrl = _oidcService.BuildEndSessionUrl(idToken, PostLogoutRedirect),
+            });
+        }
 
+        // GET (navigation directe) → on redirige direct vers Keycloak.
         var endSessionUrl = _oidcService.BuildEndSessionUrl(idToken, PostLogoutRedirect);
         return Redirect(endSessionUrl);
     }
 
     // ─────────────────────────────────────────────────────────────
     // GET /auth/me
-    //
-    //   The CookieToBearerMiddleware (registered in Program.cs) copies
-    //   the maestro_access_token cookie into the Authorization header
-    //   before JWT bearer validation runs, so [Authorize] + claims work
-    //   exactly as if the SPA had sent a Bearer token.
     // ─────────────────────────────────────────────────────────────
     [Authorize]
     [HttpGet("me")]
@@ -261,6 +341,42 @@ public class AuthController : ControllerBase
         }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // POST /auth/forgot-password
+    //
+    //   Body : { "email": "user@example.com" }
+    //
+    //   Demande à Keycloak d'envoyer un email de reset.
+    //   Réponse TOUJOURS 200 (anti-énumération).
+    //
+    //   Pré-requis Keycloak :
+    //     - SMTP configuré au niveau du realm (Realm settings → Email)
+    //     - Service account du client maestro-api-gateway avec les
+    //       rôles realm-management : manage-users, query-users
+    // ─────────────────────────────────────────────────────────────
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { message = "email requis" });
+
+        var clientId    = Environment.GetEnvironmentVariable("KEYCLOAK_CLIENT_ID");
+        var redirectUri = $"{Environment.GetEnvironmentVariable("GATEWAY_PUBLIC_URL") ?? "http://localhost:5000"}/auth/callback";
+
+        await _passwordResetService.SendResetEmailAsync(
+            request.Email,
+            clientId,
+            redirectUri,
+            cancellationToken);
+
+        return Ok(new
+        {
+            message = "Si l'email existe, un lien de réinitialisation vient d'être envoyé."
+        });
+    }
+
     // ── Helpers ──────────────────────────────────────────────────
 
     private IActionResult RedirectToLoginWithError(string code)
@@ -277,3 +393,5 @@ public class AuthController : ControllerBase
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
     }
 }
+
+public record ForgotPasswordRequest(string Email);

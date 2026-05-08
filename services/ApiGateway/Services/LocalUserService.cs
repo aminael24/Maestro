@@ -33,6 +33,28 @@ public class LocalUserService
         return user;
     }
 
+    /// <summary>
+    /// Crée le LocalUser minimal pour un utilisateur arrivant via un
+    /// Identity Provider externe (Google, GitHub). Pas de RegisterRequest
+    /// — on n'a que le sub Keycloak. ProfileUrl reste null tant que
+    /// l'utilisateur ne l'a pas complété.
+    /// </summary>
+    public async Task<LocalUser> CreateMinimalAsync(
+        string keycloakId,
+        string? profileUrl = null,
+        CancellationToken cancellationToken = default)
+    {
+        var user = new LocalUser
+        {
+            KeycloakId = keycloakId,
+            ProfileUrl = profileUrl
+        };
+
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return user;
+    }
+
     public async Task<LocalUser?> GetByKeycloakIdAsync(
         string keycloakId,
         CancellationToken cancellationToken = default)

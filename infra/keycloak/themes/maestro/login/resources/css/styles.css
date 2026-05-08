@@ -436,3 +436,61 @@ body {
   text-transform: uppercase;
   opacity: 0.6;
 }
+/* ═══════════════════════════════════════════
+   SOCIAL PROVIDERS (Google, GitHub, etc.)
+   ═══════════════════════════════════════════ */
+
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-family: 'Space Mono', monospace;
+}
+.social-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.social-divider-text {
+  padding: 0 4px;
+}
+
+.social-providers {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  font-family: inherit;
+}
+.social-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+  text-decoration: none;
+}
+.social-btn:active {
+  transform: scale(0.98);
+}
+.social-icon {
+  flex-shrink: 0;
+}
