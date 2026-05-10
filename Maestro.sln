@@ -6,6 +6,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{58
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiGateway", "services\ApiGateway\ApiGateway.csproj", "{13FBD8FB-30F1-8540-298F-D39E593FDA1C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHubService", "services\GitHubService\GitHubService.csproj", "{D8C8E9FE-ECB1-4A86-AF96-0B7AA4752B4A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,12 +18,17 @@ Global
 		{13FBD8FB-30F1-8540-298F-D39E593FDA1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{13FBD8FB-30F1-8540-298F-D39E593FDA1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{13FBD8FB-30F1-8540-298F-D39E593FDA1C}.Release|Any CPU.Build.0 = Release|Any CPU
+	{D8C8E9FE-ECB1-4A86-AF96-0B7AA4752B4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+	{D8C8E9FE-ECB1-4A86-AF96-0B7AA4752B4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+	{D8C8E9FE-ECB1-4A86-AF96-0B7AA4752B4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	{D8C8E9FE-ECB1-4A86-AF96-0B7AA4752B4A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{13FBD8FB-30F1-8540-298F-D39E593FDA1C} = {5854FF58-B8C5-05C6-5BF2-ACE42193F22B}
+	{D8C8E9FE-ECB1-4A86-AF96-0B7AA4752B4A} = {5854FF58-B8C5-05C6-5BF2-ACE42193F22B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {DD170F89-D0F1-495F-B2BF-FDDE5EB88B6E}

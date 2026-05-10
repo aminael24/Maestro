@@ -239,6 +239,50 @@ services:
     networks:
       - maestro-net
 
+  # ── GitHub Service ──────────────────────────────────────
+  github-service:
+    build:
+      context: ./services/GitHubService
+      dockerfile: Dockerfile
+    container_name: github-service
+    restart: always
+    depends_on:
+      github-db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      DATABASE_URL: Host=github-db;Port=5432;Database=github_db;Username=admin;Password=admin_password
+    ports:
+      - "5101:8080"
+    networks:
+      - maestro-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── GitHub DB ───────────────────────────────────────────
+  github-db:
+    image: postgres:16
+    container_name: github-db
+    restart: always
+    environment:
+      POSTGRES_DB: github_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d github_db"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - github_db_data:/var/lib/postgresql/data
+    networks:
+      - maestro-net
+
   # ── EF Migrations (one-shot) ───────────────────────────────
   api-gateway-migrations:
     image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -317,6 +361,7 @@ volumes:
   uploads_data:
   projects_data:
   workspace_db_data:        # ← nouveau : persistance des projets
+  github_db_data:
 
 networks:
   maestro-net:
