@@ -20,36 +20,33 @@ const fileIcons = {
   ),
 };
 
-const structure = [
-  { folder: 'db', icon: '🗄️', files: [{ name: 'schema.sql', key: 'sql', type: 'sql' }] },
-  {
-    folder: 'backend', icon: '⚙️', files: [
-      { name: 'model.js', key: 'model', type: 'js' },
-      { name: 'controller.js', key: 'controller', type: 'js' },
-      { name: 'routes.js', key: 'routes', type: 'js' },
-    ]
-  },
-  { folder: 'frontend', icon: '🎨', files: [{ name: 'App.jsx', key: 'frontend', type: 'jsx' }] },
+// Structure complète — on filtre selon le type
+const ALL_STRUCTURE = [
+  { folder: 'db',       icon: '🗄️', types: ['Fullstack'],            files: [{ name: 'schema.sql', key: 'sql',        type: 'sql'  }] },
+  { folder: 'backend',  icon: '⚙️', types: ['Fullstack', 'Backend'], files: [
+    { name: 'model.js',      key: 'model',      type: 'js' },
+    { name: 'controller.js', key: 'controller', type: 'js' },
+    { name: 'routes.js',     key: 'routes',     type: 'js' },
+  ]},
+  { folder: 'frontend', icon: '🎨', types: ['Fullstack', 'Frontend'], files: [
+    { name: 'App.jsx', key: 'frontend', type: 'jsx' }
+  ]},
 ];
 
-const AiFileTree = () => {
+// projectType : 'Frontend' | 'Backend' | 'Fullstack' | null (AI Generator = tout afficher)
+const AiFileTree = ({ projectType }) => {
   const { files, activeFile, setActiveFile } = useAiStore();
+
+  // Filtre les groupes selon le type — si pas de type (AI Generator) on affiche tout
+  const structure = projectType
+    ? ALL_STRUCTURE.filter(g => g.types.includes(projectType))
+    : ALL_STRUCTURE;
 
   return (
     <div style={{ padding: '20px 12px', color: '#cdd9e5', fontSize: '13px', height: '100%' }}>
       {/* Header */}
-      <div style={{
-        marginBottom: '24px',
-        padding: '0 8px',
-      }}>
-        <div style={{
-          fontSize: '10px',
-          fontWeight: '700',
-          letterSpacing: '0.12em',
-          color: 'rgba(255,255,255,0.3)',
-          textTransform: 'uppercase',
-          marginBottom: '4px',
-        }}>
+      <div style={{ marginBottom: '24px', padding: '0 8px' }}>
+        <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: '4px' }}>
           Explorer
         </div>
         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500' }}>
@@ -59,63 +56,34 @@ const AiFileTree = () => {
 
       {structure.map((group) => (
         <div key={group.folder} style={{ marginBottom: '20px' }}>
-          {/* Folder */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 8px',
-            marginBottom: '4px',
-            color: 'rgba(255,255,255,0.55)',
-            fontSize: '11px',
-            fontWeight: '600',
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', marginBottom: '4px', color: 'rgba(255,255,255,0.55)', fontSize: '11px', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             <span style={{ fontSize: '13px' }}>{group.icon}</span>
             {group.folder}
           </div>
 
-          {/* Files */}
           <div style={{ marginLeft: '8px' }}>
             {group.files.map((file) => {
-              const isActive = activeFile === file.key;
+              const isActive  = activeFile === file.key;
               const hasContent = !!files[file.key];
               return (
                 <div
                   key={file.key}
                   onClick={() => setActiveFile(file.key)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    marginBottom: '2px',
-                    backgroundColor: isActive
-                      ? 'rgba(100, 181, 246, 0.12)'
-                      : 'transparent',
-                    borderLeft: isActive
-                      ? '2px solid #64b5f6'
-                      : '2px solid transparent',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '6px 10px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px',
+                    backgroundColor: isActive ? 'rgba(100, 181, 246, 0.12)' : 'transparent',
+                    borderLeft: isActive ? '2px solid #64b5f6' : '2px solid transparent',
                     color: isActive ? '#e8f4fd' : 'rgba(255,255,255,0.45)',
                     transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={e => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)';
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)'; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
                 >
                   {fileIcons[file.type] || fileIcons.js}
                   <span style={{ flex: 1, fontSize: '13px' }}>{file.name}</span>
                   {hasContent && (
-                    <span style={{
-                      width: '6px', height: '6px', borderRadius: '50%',
-                      backgroundColor: '#4caf50', flexShrink: 0,
-                    }} />
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4caf50', flexShrink: 0 }} />
                   )}
                 </div>
               );
