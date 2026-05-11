@@ -34,7 +34,7 @@ Quand on te demande de générer une application CRUD, tu génères TOUJOURS ces
 
 ### FRONTEND
 ```jsx
-<App.jsx : composant React complet avec liste, formulaire ajout/modification, suppression, fetch() vers backend port 3001>
+<App.jsx : composant React complet avec liste, formulaire ajout/modification, suppression, appels API vers backend>
 ```
 
 EXPLICATION: <explication courte de ce qui a été généré>
@@ -42,12 +42,23 @@ EXPLICATION: <explication courte de ce qui a été généré>
 Règles STRICTES :
 - PostgreSQL UNIQUEMENT comme base de données (jamais MongoDB, jamais SQLite)
 - Le model utilise le package 'pg' (node-postgres) avec un pool de connexion
-- String de connexion PostgreSQL : postgresql://user:password@localhost:5432/dbname
+- Le model.js utilise TOUJOURS les variables d'environnement pour la connexion PostgreSQL :
+  const pool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT) || 5432,
+  });
 - Controller appelle le model, gère les erreurs avec try/catch
 - Routes utilisent express.Router()
-- Frontend React avec fetch(), useState, useEffect, pas de librairie externe
-- CORS inclus dans le backend (dans server.js séparé)
-- Code propre, commenté, directement utilisable"""
+- CORS inclus dans le backend
+- Code propre, commenté, directement utilisable
+- Les INSERT SQL n'utilisent JAMAIS d'apostrophes dans les valeurs
+- Les noms de tables et colonnes SQL n'utilisent JAMAIS d'accents ni de caractères spéciaux (utiliser 'etudiants' au lieu de 'étudiants', 'prenom' au lieu de 'prénom', 'telephone' au lieu de 'téléphone')
+- Le nom de la table dans le model.js doit être EXACTEMENT le même que dans le SQL
+- Dans App.jsx, l'URL du backend utilise TOUJOURS : const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'; et utilise API_URL dans tous les appels axios/fetch
+- App.jsx doit avoir un design moderne et attrayant avec du CSS inline ou des styles intégrés : couleurs, gradients, cards, boutons stylisés, tableaux avec hover effects, header avec titre, mise en page propre et professionnelle. PAS de design basique HTML brut."""
 
     user = f"Génère une application CRUD complète pour : {req.description}"
     if req.language:
