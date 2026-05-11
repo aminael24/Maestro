@@ -62,7 +62,7 @@
   <div class="login-card">
     <div class="brand">
       <div class="brand-icon">
-        <img src="${url.resourcesPath}/img/maestro-logo.svg" alt="Maestro logo" />
+        <img src="${url.resourcesPath}/img/logo.png" alt="Maestro logo" />
       </div>
       <h1>DevSecOps</h1>
       <p>Plateforme Microservices</p>
