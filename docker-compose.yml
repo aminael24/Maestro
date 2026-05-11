@@ -232,13 +232,14 @@ services:
     container_name: runner-service
     restart: always
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     environment:
       ASPNETCORE_URLS: http://+:8080
-      KAFKA_BROKER: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     networks:
       - maestro-net
-
+      
   # ── EF Migrations (one-shot) ───────────────────────────────
   api-gateway-migrations:
     image: mcr.microsoft.com/dotnet/sdk:8.0
