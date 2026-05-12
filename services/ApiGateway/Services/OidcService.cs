@@ -5,7 +5,7 @@ namespace ApiGateway.Services;
 
 /// <summary>
 /// OIDC client pour l'ApiGateway, parle à Keycloak en client *confidentiel*.
-/// Le frontend n'est plus impliqué dans l'échange de code et n'a plus
+///
 /// besoin de PKCE — le navigateur suit juste les redirections.
 ///
 /// Lit ces variables d'environnement :
