@@ -58,8 +58,30 @@ Règles STRICTES :
 - Les noms de tables et colonnes SQL n'utilisent JAMAIS d'accents ni de caractères spéciaux (utiliser 'etudiants' au lieu de 'étudiants', 'prenom' au lieu de 'prénom', 'telephone' au lieu de 'téléphone')
 - Le nom de la table dans le model.js doit être EXACTEMENT le même que dans le SQL
 - Dans App.jsx, l'URL du backend utilise TOUJOURS : const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'; et utilise API_URL dans tous les appels axios/fetch
-- App.jsx doit avoir un design moderne et attrayant avec du CSS inline ou des styles intégrés : couleurs, gradients, cards, boutons stylisés, tableaux avec hover effects, header avec titre, mise en page propre et professionnelle. PAS de design basique HTML brut."""
+- App.jsx doit TOUJOURS utiliser une interface React moderne et professionnelle.
 
+Règles UI STRICTES :
+
+- Utiliser une constante styles en React
+- Utiliser des cards modernes glassmorphism
+- Utiliser une palette dark mode élégante
+- Utiliser des gradients bleus/violets
+- Utiliser flexbox ou CSS grid
+- Utiliser des bordures arrondies modernes
+- Utiliser box-shadow
+- Utiliser des formulaires premium
+- Utiliser des inputs modernes avec fond sombre
+- Utiliser des boutons avec gradients et hover effects
+- Utiliser spacing et padding professionnels
+- Utiliser transitions fluides
+- Utiliser une mise en page responsive
+- Ne jamais utiliser de HTML brut simple
+- Ne jamais utiliser <br />
+- Toujours styliser toute l’interface
+- Le résultat doit ressembler à une vraie application SaaS moderne
+
+IMPORTANT :
+Toute l’interface doit être immédiatement belle sans CSS externe."""
     user = f"Génère une application CRUD complète pour : {req.description}"
     if req.language:
         user += f"\nPréférence : {req.language}"

@@ -88,37 +88,591 @@ app.listen({backendPort}, () => console.log('Backend running on port {backendPor
 
 var indexHtml = """
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Maestro App</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-      body { background: #f0f4f8; color: #1a202c; }
-      #root { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-      h1, h2 { color: #2d3748; margin-bottom: 1.5rem; }
-      h1 { font-size: 2rem; border-bottom: 3px solid #4299e1; padding-bottom: 0.5rem; }
-      h2 { font-size: 1.3rem; color: #4a5568; }
-      form { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.07); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
-      input { padding: 0.6rem 1rem; border: 1.5px solid #cbd5e0; border-radius: 8px; font-size: 0.9rem; outline: none; transition: border 0.2s; min-width: 140px; }
-      input:focus { border-color: #4299e1; }
-      button { padding: 0.6rem 1.4rem; background: #4299e1; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
-      button:hover { background: #2b6cb0; }
-      button.delete { background: #fc8181; }
-      button.delete:hover { background: #e53e3e; }
-      button.edit { background: #68d391; color: #1a202c; margin-right: 0.4rem; }
-      button.edit:hover { background: #38a169; color: white; }
-      table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
-      th { background: #4299e1; color: white; padding: 0.9rem 1rem; text-align: left; font-weight: 600; }
-      td { padding: 0.8rem 1rem; border-bottom: 1px solid #e2e8f0; }
-      tr:hover td { background: #ebf8ff; }
-      tr:last-child td { border-bottom: none; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>Maestro AI Generator</title>
+
+  <style>
+
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:'Segoe UI',sans-serif;
+    }
+
+    body{
+      min-height:100vh;
+      overflow-x:hidden;
+
+      background:
+      radial-gradient(circle at top left,#1e3a8a 0%,transparent 25%),
+      radial-gradient(circle at bottom right,#7c3aed 0%,transparent 25%),
+      #030712;
+
+      color:white;
+    }
+
+    body::before{
+      content:"";
+
+      position:fixed;
+      inset:0;
+
+      background:
+      linear-gradient(
+        rgba(255,255,255,0.03) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        rgba(255,255,255,0.03) 1px,
+        transparent 1px
+      );
+
+      background-size:40px 40px;
+
+      pointer-events:none;
+    }
+
+    .maestro-shell{
+      max-width:1400px;
+      margin:auto;
+      padding:40px;
+      position:relative;
+      z-index:2;
+    }
+
+    /* HEADER */
+
+    .header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+
+      margin-bottom:60px;
+    }
+
+    .logo{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .logo-icon{
+      width:48px;
+      height:48px;
+
+      border-radius:16px;
+
+      background:
+      linear-gradient(
+        135deg,
+        #3b82f6,
+        #8b5cf6
+      );
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+
+      font-weight:900;
+      font-size:1.2rem;
+
+      box-shadow:
+      0 8px 25px rgba(99,102,241,0.35);
+    }
+
+    .logo-text{
+      font-size:1.5rem;
+      font-weight:800;
+    }
+
+    .status{
+      display:flex;
+      align-items:center;
+      gap:10px;
+
+      padding:12px 18px;
+
+      border-radius:999px;
+
+      background:rgba(34,197,94,0.12);
+
+      border:1px solid rgba(255,255,255,0.08);
+
+      color:#86efac;
+
+      font-weight:600;
+
+      backdrop-filter:blur(12px);
+    }
+
+    .status-dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+
+      background:#22c55e;
+
+      box-shadow:0 0 12px #22c55e;
+    }
+
+    /* HERO */
+
+    .hero{
+      margin-bottom:60px;
+      max-width:950px;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+
+      padding:10px 18px;
+
+      border-radius:999px;
+
+      background:rgba(59,130,246,0.12);
+
+      border:1px solid rgba(255,255,255,0.08);
+
+      color:#93c5fd;
+
+      font-size:0.95rem;
+      font-weight:600;
+
+      margin-bottom:25px;
+
+      backdrop-filter:blur(12px);
+    }
+
+    .hero h1{
+      font-size:5rem;
+      line-height:1.05;
+
+      font-weight:900;
+
+      margin-bottom:28px;
+
+      background:
+      linear-gradient(
+        to right,
+        #ffffff,
+        #60a5fa,
+        #a78bfa
+      );
+
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+
+    .hero p{
+      font-size:1.2rem;
+      line-height:1.9;
+
+      color:#94a3b8;
+
+      max-width:760px;
+    }
+
+    /* FEATURES */
+
+    .features{
+      display:grid;
+
+      grid-template-columns:
+      repeat(auto-fit,minmax(240px,1fr));
+
+      gap:20px;
+
+      margin-bottom:55px;
+    }
+
+    .feature-card{
+      background:rgba(255,255,255,0.05);
+
+      border:1px solid rgba(255,255,255,0.08);
+
+      border-radius:24px;
+
+      padding:24px;
+
+      backdrop-filter:blur(14px);
+
+      transition:0.3s;
+    }
+
+    .feature-card:hover{
+      transform:translateY(-5px);
+
+      border-color:rgba(96,165,250,0.3);
+    }
+
+    .feature-icon{
+      font-size:2rem;
+      margin-bottom:18px;
+    }
+
+    .feature-title{
+      font-size:1.1rem;
+      font-weight:700;
+
+      margin-bottom:12px;
+    }
+
+    .feature-text{
+      color:#94a3b8;
+      line-height:1.7;
+      font-size:0.95rem;
+    }
+
+    /* TERMINAL */
+
+    .terminal{
+      margin-bottom:60px;
+
+      background:#020617;
+
+      border:1px solid rgba(255,255,255,0.08);
+
+      border-radius:24px;
+
+      overflow:hidden;
+
+      box-shadow:
+      0 8px 40px rgba(0,0,0,0.35);
+    }
+
+    .terminal-header{
+      display:flex;
+      gap:10px;
+
+      padding:16px;
+
+      background:#0f172a;
+    }
+
+    .red,
+    .yellow,
+    .green{
+      width:12px;
+      height:12px;
+      border-radius:50%;
+    }
+
+    .red{
+      background:#ef4444;
+    }
+
+    .yellow{
+      background:#facc15;
+    }
+
+    .green{
+      background:#22c55e;
+    }
+
+    .terminal-body{
+      padding:28px;
+
+      font-family:monospace;
+
+      color:#22c55e;
+
+      line-height:2;
+    }
+
+    /* GENERATED APP */
+
+    .generated-app{
+      background:rgba(255,255,255,0.05);
+
+      border:1px solid rgba(255,255,255,0.08);
+
+      border-radius:30px;
+
+      padding:35px;
+
+      backdrop-filter:blur(18px);
+
+      box-shadow:
+      0 8px 40px rgba(0,0,0,0.35);
+    }
+
+    .generated-title{
+      display:flex;
+      align-items:center;
+      gap:14px;
+
+      margin-bottom:12px;
+    }
+
+    .generated-title h2{
+      font-size:2rem;
+      font-weight:800;
+    }
+
+    .generated-badge{
+      padding:8px 14px;
+
+      border-radius:999px;
+
+      background:rgba(59,130,246,0.12);
+
+      color:#93c5fd;
+
+      font-size:0.85rem;
+      font-weight:700;
+
+      border:1px solid rgba(255,255,255,0.08);
+    }
+
+    .generated-subtitle{
+      color:#94a3b8;
+
+      margin-bottom:30px;
+
+      line-height:1.7;
+    }
+
+    #root{
+      margin-top:25px;
+    }
+
+    /* FOOTER */
+
+    .footer{
+      margin-top:60px;
+
+      text-align:center;
+
+      color:#64748b;
+
+      font-size:0.92rem;
+    }
+
+    /* RESPONSIVE */
+
+    @media(max-width:900px){
+
+      .hero h1{
+        font-size:3.8rem;
+      }
+
+    }
+
+    @media(max-width:768px){
+
+      .maestro-shell{
+        padding:20px;
+      }
+
+      .header{
+        flex-direction:column;
+        gap:20px;
+        align-items:flex-start;
+      }
+
+      .hero h1{
+        font-size:2.7rem;
+      }
+
+      .hero p{
+        font-size:1rem;
+      }
+
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="maestro-shell">
+
+    <!-- HEADER -->
+
+    <section class="header">
+
+      <div class="logo">
+
+        <div class="logo-icon">
+          M
+        </div>
+
+        <div class="logo-text">
+          Maestro AI
+        </div>
+
+      </div>
+
+      <div class="status">
+
+        <div class="status-dot"></div>
+
+        AI Generator Active
+
+      </div>
+
+    </section>
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+      <div class="badge">
+        AI Full-Stack Generation Platform
+      </div>
+
+      <h1>
+        Décrivez votre besoin.<br/>
+        Maestro génère automatiquement
+        votre application full-stack.
+      </h1>
+
+      <p>
+        Frontend React, backend Node.js, API REST, PostgreSQL,
+        architecture modulaire et exécution Docker générés automatiquement grâce à l’intelligence artificielle.
+      </p>
+
+    </section>
+
+    <!-- FEATURES -->
+
+    <section class="features">
+
+      <div class="feature-card">
+
+        <div class="feature-icon">⚡</div>
+
+        <div class="feature-title">
+          Génération instantanée
+        </div>
+
+        <div class="feature-text">
+          Création automatique des fichiers frontend, backend et base de données.
+        </div>
+
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-icon">🧠</div>
+
+        <div class="feature-title">
+          Agent IA intelligent
+        </div>
+
+        <div class="feature-text">
+          Analyse du prompt utilisateur et génération dynamique de l’architecture.
+        </div>
+
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-icon">🚀</div>
+
+        <div class="feature-title">
+          Exécution automatique
+        </div>
+
+        <div class="feature-text">
+          Installation des dépendances et lancement automatique des services Docker.
+        </div>
+
+      </div>
+
+      <div class="feature-card">
+
+        <div class="feature-icon">🐳</div>
+
+        <div class="feature-title">
+          Docker Ready
+        </div>
+
+        <div class="feature-text">
+          Environnement isolé et prêt au déploiement pour chaque application générée.
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TERMINAL -->
+
+    <section class="terminal">
+
+      <div class="terminal-header">
+
+        <div class="red"></div>
+        <div class="yellow"></div>
+        <div class="green"></div>
+
+      </div>
+
+      <div class="terminal-body">
+
+        <p>> Analyse du prompt utilisateur...</p>
+        <p>> Génération du frontend React...</p>
+        <p>> Génération du backend Express...</p>
+        <p>> Génération des routes API...</p>
+        <p>> Création du schéma PostgreSQL...</p>
+        <p>> Construction des conteneurs Docker...</p>
+        <p>> Installation des dépendances...</p>
+        <p>> Exécution automatique des services...</p>
+        <p>> Application générée avec succès ✓</p>
+
+      </div>
+
+    </section>
+
+    <!-- GENERATED APP -->
+
+    <section class="generated-app">
+
+      <div class="generated-title">
+
+        <h2>
+          Generated Application
+        </h2>
+
+        <div class="generated-badge">
+          AI Generated
+        </div>
+
+      </div>
+
+      <div class="generated-subtitle">
+
+        Cette interface a été automatiquement générée par Maestro AI.
+        Le contenu dynamique de l’application est injecté automatiquement via React.
+
+      </div>
+
+      <!-- REACT APP -->
+      <div id="root"></div>
+
+    </section>
+
+    <!-- FOOTER -->
+
+    <div class="footer">
+      Maestro AI © 2026 — Full-Stack AI Generation Platform
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.jsx"></script>
+
+</body>
+
 </html>
 """;
         await File.WriteAllTextAsync(Path.Combine(frontendDir, "index.html"), indexHtml);
