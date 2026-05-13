@@ -10,8 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
-<a href="/" class="back-home">
+<!-- ═══ Back to home → React frontend home ═══ -->
+<a href="http://localhost:5173/" class="back-home">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="m15 18-6-6 6-6"/>
   </svg>
@@ -62,7 +62,7 @@
   <div class="login-card">
     <div class="brand">
       <div class="brand-icon">
-        <img src="${url.resourcesPath}/img/maestro-logo.svg" alt="Maestro logo" />
+        <img src="${url.resourcesPath}/img/logo.png" alt="Maestro logo" />
       </div>
       <h1>DevSecOps</h1>
       <p>Plateforme Microservices</p>

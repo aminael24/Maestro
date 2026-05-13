@@ -20,6 +20,7 @@ public class KeycloakService
     public Task<string> GetAdminTokenPublicAsync(CancellationToken cancellationToken = default)
         => GetAdminTokenAsync(cancellationToken);
 
+  //obtenir un token d'administrateur Keycloak pour pouvoir créer/supprimer des utilisateurs.
     private async Task<string> GetAdminTokenAsync(CancellationToken cancellationToken = default)
     {
         var tokenEndpoint = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_TOKEN_ENDPOINT")
