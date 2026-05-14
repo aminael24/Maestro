@@ -241,82 +241,8 @@ export default function LandingPage() {
       {/* ── SENTINEL ────────────────────────────────────── */}
 
       {/* ── CTA ─────────────────────────────────────────── */}
-      <section id="cta" className="cta-section">
-        <div className="cta-wrapper">
-          <h2>Prêt à orchestrer ?</h2>
-          <blockquote>
-            « Maestro nous a fait gagner des heures sur chaque déploiement, sans
-            rien sacrifier sur la sécurité. »
-          </blockquote>
-          <div className="cta-buttons">
-            <button
-              type="button"
-              className="btn-dark pulse-button"
-              onClick={handleLogin}
-              disabled={loggingIn}
-            >
-              {loggingIn ? "Redirection…" : "Se connecter"}
-            </button>
-            <Link to="/auth/register" className="btn-ghost">
-              Créer un compte
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* ── FOOTER ──────────────────────────────────────── */}
-      <footer>
-        <div className="footer-grid">
-          <div>
-            <div className="footer-brand">Maestro</div>
-            <p className="footer-tagline">
-              Plateforme DevSecOps pour orchestrer vos projets en toute
-              sérénité.
-            </p>
-          </div>
-          <div className="footer-col">
-            <h4>Produit</h4>
-            <ul>
-              <li>
-                <a href="#features">Fonctionnalités</a>
-              </li>
-              <li>
-                <a href="#sentinel">Sécurité</a>
-              </li>
-              <li>
-                <a href="#cta">Démarrer</a>
-              </li>
-            </ul>
-          </div>
-          <div className="footer-col">
-            <h4>Compte</h4>
-            <ul>
-              <li>
-                <a href="#" onClick={handleLogin}>
-                  Se connecter
-                </a>
-              </li>
-              <li>
-                <Link to="/auth/register">Créer un compte</Link>
-              </li>
-            </ul>
-          </div>
-          <div className="footer-col">
-            <h4>Ressources</h4>
-            <ul>
-              <li>
-                <a href="#">Documentation</a>
-              </li>
-              <li>
-                <a href="#">Support</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          © {new Date().getFullYear()} Maestro. Tous droits réservés.
-        </div>
-      </footer>
     </div>
   );
 }
