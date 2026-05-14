@@ -10,7 +10,7 @@ using System.Security.Claims; // Ajouté pour HttpContext.User.FindFirstValue
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Configuration Database ──────────────────────────────────
+// ── Configuration Database ────────────────────────────────
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 builder.Services.AddDbContext<WorkspaceDbContext>(options =>
     options.UseNpgsql(connectionString));
