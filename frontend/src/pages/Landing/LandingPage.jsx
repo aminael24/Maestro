@@ -1,12 +1,18 @@
+// src/pages/landing/LandingPage.tsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { redirectToGatewayLogin } from "../../services/authService";
+import FeaturesSection from "../../components/landing/FeaturesSection";
+import TestimonialsSection from "../../components/landing/TestimonialsSection";
+import MeshGradientBackground from "../../components/landing/MeshGradientBackground";
+import Aboutsection from "../../components/landing/Aboutsection";
+import ContactUs from "../../components/landing/ContactUs";
+import SocialDock from "../../components/landing/MaestroFooter"; // ← import
 import "./LandingPage.css";
 
 export default function LandingPage() {
   const [revealed, setRevealed] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
-  const [hoveredFeature, setHoveredFeature] = useState(null);
   const [activeLogLine, setActiveLogLine] = useState(0);
 
   useEffect(() => {
@@ -15,9 +21,8 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    // Rotate active log line for animation
     const interval = setInterval(() => {
-      setActiveLogLine(prev => (prev + 1) % 4);
+      setActiveLogLine((prev) => (prev + 1) % 4);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -29,16 +34,30 @@ export default function LandingPage() {
   }
 
   return (
+    // ⚠️  Assure-toi que .maestro-landing a bien :
+    //     position: relative; overflow: hidden;  dans LandingPage.css
     <div className="maestro-landing">
+      {/* ── MESH GRADIENT ── remplace les .orb du hero ─────────────────── */}
+      <MeshGradientBackground />
+
       {/* ── NAV ─────────────────────────────────────────── */}
-      <nav className="animated-nav">
+      <nav
+        className="animated-nav"
+        style={{ position: "relative", zIndex: 20 }}
+      >
         <a href="/" className="nav-brand">
           Maestro
         </a>
         <ul className="nav-links">
-          <li><a href="#features">Fonctionnalités</a></li>
-          <li><a href="#sentinel">Sécurité</a></li>
-          <li><a href="#cta">Commencer</a></li>
+          <li>
+            <a href="#features">Fonctionnalités</a>
+          </li>
+          <li>
+            <a href="#sentinel">Sécurité</a>
+          </li>
+          <li>
+            <a href="#cta">Commencer</a>
+          </li>
         </ul>
         <button className="nav-cta" onClick={handleLogin} disabled={loggingIn}>
           {loggingIn ? "Redirection…" : "Se connecter"}
@@ -46,10 +65,14 @@ export default function LandingPage() {
       </nav>
 
       {/* ── HERO ────────────────────────────────────────── */}
-      <section className="hero-section">
-        <span className="orb orb-blue-1" aria-hidden="true" />
-        <span className="orb orb-blue-2" aria-hidden="true" />
-        <span className="orb orb-blue-3" aria-hidden="true" />
+      <section
+        className="hero-section"
+        style={{ position: "relative", zIndex: 10 }}
+      >
+        {/*
+          Les anciens .orb sont supprimés — le MeshGradientBackground
+          les remplace avec les blobs animés palette Navy/Gold/Aqua/Teal/Sand.
+        */}
 
         <div className={`hero-inner ${revealed ? "hero-in" : ""}`}>
           {/* Left */}
@@ -147,13 +170,18 @@ export default function LandingPage() {
                   <span className="scan-pct animated-percent">68%</span>
                 </div>
                 <div className="scan-bar-bg">
-                  <div className="scan-bar-fill animated-fill" style={{ width: "68%" }}>
+                  <div
+                    className="scan-bar-fill animated-fill"
+                    style={{ width: "68%" }}
+                  >
                     <span className="scan-shimmer" />
                   </div>
                 </div>
                 <div className="scan-meta">
                   <span className="commit-hash">a4f32c1</span>
-                  <span className="threat-blocked animated-threat">2 threats blocked</span>
+                  <span className="threat-blocked animated-threat">
+                    2 threats blocked
+                  </span>
                 </div>
               </div>
 
@@ -162,15 +190,17 @@ export default function LandingPage() {
                   { text: "✓ image build [12.4s]", status: "done" },
                   { text: "✓ unit tests [284 passed]", status: "done" },
                   { text: "✓ lint [0 errors]", status: "ok" },
-                  { text: "→ scanning dependencies…", status: "active" }
+                  { text: "→ scanning dependencies…", status: "active" },
                 ].map((log, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className={`log-line ${idx === activeLogLine ? "log-flash" : ""} ${log.status === "active" ? "log-active" : ""}`}
                   >
                     <span className={`log-indicator ${log.status}`} />
                     <span className="log-text">{log.text}</span>
-                    {log.status === "active" && <span className="log-cursor">▍</span>}
+                    {log.status === "active" && (
+                      <span className="log-cursor">▍</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -196,159 +226,27 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <Aboutsection />
+
       {/* ── FEATURES ────────────────────────────────────── */}
-      <section id="features" className="features-section">
-        <div 
-          className="feature-row"
-          onMouseEnter={() => setHoveredFeature(0)}
-          onMouseLeave={() => setHoveredFeature(null)}
-        >
-          <div className="feature-image-wrapper">
-            <div className={`feature-image-placeholder ${hoveredFeature === 0 ? "feature-hover" : ""}`}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.2">
-                <path d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
-                <path d="M3 7l9 4 9-4M12 11v10" />
-              </svg>
-            </div>
-          </div>
-          <div className="feature-content-wrapper">
-            <div className="feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.6" strokeLinecap="round">
-                <rect x="3" y="3" width="18" height="18" rx="3" />
-                <path d="M7 12l3 3 7-7" />
-              </svg>
-            </div>
-            <h2>Pipelines à la demande, sans configuration</h2>
-            <p>
-              Définissez vos étapes de build, de test et de déploiement en
-              quelques clics. Maestro orchestre l'ensemble — vous gardez la
-              main sur ce qui compte.
-            </p>
-            <ul className="feature-checks">
-              <li className="animated-check">
-                <span className="check-dot" />
-                <span><strong>CI/CD intégré</strong> – build, test, deploy en un seul flux</span>
-              </li>
-              <li className="animated-check" style={{ animationDelay: "0.1s" }}>
-                <span className="check-dot" />
-                <span><strong>Templates prêts à l'emploi</strong> pour Node, Python, Go…</span>
-              </li>
-              <li className="animated-check" style={{ animationDelay: "0.2s" }}>
-                <span className="check-dot" />
-                <span><strong>Rollback en un clic</strong> en cas de problème en production</span>
-              </li>
-            </ul>
-            <div className="stats-row">
-              <div className="stat-card pulse-card">
-                <div className="stat-value">12s</div>
-                <div className="stat-label">Deploy moyen</div>
-              </div>
-              <div className="stat-card pulse-card">
-                <div className="stat-value">99.8%</div>
-                <div className="stat-label">Uptime garanti</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <FeaturesSection />
 
-        <div 
-          className="feature-row reverse"
-          onMouseEnter={() => setHoveredFeature(1)}
-          onMouseLeave={() => setHoveredFeature(null)}
-        >
-          <div className="feature-image-wrapper">
-            <div className={`feature-image-placeholder ${hoveredFeature === 1 ? "feature-hover" : ""}`}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.2">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-              </svg>
-            </div>
-          </div>
-          <div className="feature-content-wrapper">
-            <div className="feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.6" strokeLinecap="round">
-                <path d="M12 2a10 10 0 100 20 10 10 0 000-20z" />
-                <path d="M12 6v6l4 2" />
-              </svg>
-            </div>
-            <h2>Workspace unifié pour vos équipes</h2>
-            <p>
-              Tableau de bord centralisé, partage des projets, vue temps réel
-              sur les déploiements. Plus de jongles entre 5 outils différents.
-            </p>
-            <ul className="feature-checks">
-              <li className="animated-check">
-                <span className="check-dot" />
-                <span><strong>Vue centralisée</strong> sur tous vos projets</span>
-              </li>
-              <li className="animated-check" style={{ animationDelay: "0.1s" }}>
-                <span className="check-dot" />
-                <span><strong>Collaboration temps réel</strong> avec votre équipe</span>
-              </li>
-              <li className="animated-check" style={{ animationDelay: "0.2s" }}>
-                <span className="check-dot" />
-                <span><strong>Historique complet</strong> des déploiements</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
+      {/* ── TESTIMONIALS ────────────────────────────────── */}
+      <TestimonialsSection />
+      <ContactUs />
+      <SocialDock />
 
-      {/* ── SENTINEL (sécurité) ─────────────────────────── */}
-      <section id="sentinel" className="security-section">
-        <div className="feature-row">
-          <div className="feature-content-wrapper sentinel-content-wrapper">
-            <div className="feature-icon sentinel-feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round">
-                <path d="M12 2L4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4z" />
-              </svg>
-            </div>
-            <h2>Sécurité by design</h2>
-            <p>
-              Authentification Keycloak (OIDC), cookies HttpOnly côté backend,
-              tokens jamais exposés au navigateur. Vos secrets restent secrets.
-            </p>
-            <ul className="feature-checks">
-              <li className="animated-check">
-                <span className="check-dot" />
-                <span><strong>OIDC + Keycloak</strong> — auth confidentielle</span>
-              </li>
-              <li className="animated-check" style={{ animationDelay: "0.1s" }}>
-                <span className="check-dot" />
-                <span><strong>Cookies HttpOnly</strong> — pas de XSS sur les tokens</span>
-              </li>
-              <li className="animated-check" style={{ animationDelay: "0.2s" }}>
-                <span className="check-dot" />
-                <span><strong>Scan dépendances</strong> à chaque commit</span>
-              </li>
-            </ul>
-            <button
-              type="button"
-              className="btn-outline-light"
-              onClick={handleLogin}
-              disabled={loggingIn}
-            >
-              {loggingIn ? "Redirection…" : "Découvrir Maestro →"}
-            </button>
-          </div>
-          <div className="feature-image-wrapper sentinel-image-wrapper">
-            <div className="feature-image-placeholder rotating-badge">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.2">
-                <path d="M12 2L4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4z" />
-                <path d="M9 12l2 2 4-4" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── CONTACT US ─────────────────────────────────── */}
+
+      {/* ── SENTINEL ────────────────────────────────────── */}
 
       {/* ── CTA ─────────────────────────────────────────── */}
       <section id="cta" className="cta-section">
         <div className="cta-wrapper">
           <h2>Prêt à orchestrer ?</h2>
           <blockquote>
-            « Maestro nous a fait gagner des heures sur chaque déploiement,
-            sans rien sacrifier sur la sécurité. »
+            « Maestro nous a fait gagner des heures sur chaque déploiement, sans
+            rien sacrifier sur la sécurité. »
           </blockquote>
           <div className="cta-buttons">
             <button
@@ -372,29 +270,46 @@ export default function LandingPage() {
           <div>
             <div className="footer-brand">Maestro</div>
             <p className="footer-tagline">
-              Plateforme DevSecOps pour orchestrer vos projets en toute sérénité.
+              Plateforme DevSecOps pour orchestrer vos projets en toute
+              sérénité.
             </p>
           </div>
           <div className="footer-col">
             <h4>Produit</h4>
             <ul>
-              <li><a href="#features">Fonctionnalités</a></li>
-              <li><a href="#sentinel">Sécurité</a></li>
-              <li><a href="#cta">Démarrer</a></li>
+              <li>
+                <a href="#features">Fonctionnalités</a>
+              </li>
+              <li>
+                <a href="#sentinel">Sécurité</a>
+              </li>
+              <li>
+                <a href="#cta">Démarrer</a>
+              </li>
             </ul>
           </div>
           <div className="footer-col">
             <h4>Compte</h4>
             <ul>
-              <li><a href="#" onClick={handleLogin}>Se connecter</a></li>
-              <li><Link to="/auth/register">Créer un compte</Link></li>
+              <li>
+                <a href="#" onClick={handleLogin}>
+                  Se connecter
+                </a>
+              </li>
+              <li>
+                <Link to="/auth/register">Créer un compte</Link>
+              </li>
             </ul>
           </div>
           <div className="footer-col">
             <h4>Ressources</h4>
             <ul>
-              <li><a href="#">Documentation</a></li>
-              <li><a href="#">Support</a></li>
+              <li>
+                <a href="#">Documentation</a>
+              </li>
+              <li>
+                <a href="#">Support</a>
+              </li>
             </ul>
           </div>
         </div>
