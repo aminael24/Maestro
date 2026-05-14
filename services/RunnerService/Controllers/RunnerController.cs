@@ -18,6 +18,15 @@ public class RunnerController : ControllerBase
         _logger = logger;
     }
 
+    [HttpOptions("run")]
+    public IActionResult PreflightRun()
+    {
+        Response.Headers["Access-Control-Allow-Origin"] = "*";
+        Response.Headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+        Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+        return Ok();
+    }
+
     [HttpPost("run")]
     public async Task Run([FromBody] RunRequest request, CancellationToken cancellationToken)
     {
