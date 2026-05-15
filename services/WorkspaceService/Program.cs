@@ -9,8 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
  
 var builder = WebApplication.CreateBuilder(args);
- 
-// ── Database ─────────────────────────────────────────────────
+
+// ── Configuration Database ────────────────────────────────
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 builder.Services.AddDbContext<WorkspaceDbContext>(options =>
     options.UseNpgsql(connectionString));

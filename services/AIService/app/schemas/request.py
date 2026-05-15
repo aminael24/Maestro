@@ -6,7 +6,7 @@ class CodeGenRequest(BaseModel):
     language: Optional[str] = None
     context: Optional[str] = None
 
-# ✅ NOUVEAU
+#  NOUVEAU
 class ChatRequest(BaseModel):
     message: str
     currentFiles: dict
