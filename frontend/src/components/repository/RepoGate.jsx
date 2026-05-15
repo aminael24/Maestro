@@ -1,13 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useGitHubStore } from '../../store/gitHubStore';
+import OAuthModal from './OAuthModal';
 
 const RepoGate = () => {
+  const { isConnected, connect, fetchRepositories } = useGitHubStore();
+  const [isOAuthModalOpen, setIsOAuthModalOpen] = useState(!isConnected);
+
+  const handleOAuthConnect = async () => {
+    const authUrl = await connect();
+    if (authUrl) {
+      window.location.href = authUrl;
+      return;
+    }
+
+    setIsOAuthModalOpen(false);
+    await fetchRepositories();
+  };
+
+  if (isConnected) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-      <div className="bg-gray-800 rounded-lg p-8 shadow-lg border border-gray-700">
-        <h1 className="text-2xl font-bold text-white mb-4">Connect Repository</h1>
-        <p className="text-gray-400">Initialize your repository connection</p>
-      </div>
-    </div>
+    <>
+      <OAuthModal
+        isOpen={isOAuthModalOpen}
+        onClose={() => {
+          // For now, don't allow closing without connecting
+        }}
+        onConnect={handleOAuthConnect}
+      />
+    </>
   );
 };
 

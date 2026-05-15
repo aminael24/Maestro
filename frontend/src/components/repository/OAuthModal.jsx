@@ -1,38 +1,31 @@
 import React from 'react';
-import { Rnd } from 'react-rnd';
 
-const OAuthModal = () => {
+const OAuthModal = ({ isOpen, onClose, onConnect }) => {
+  if (!isOpen) return null;
+
   return (
-    <Rnd
-      default={{
-        x: window.innerWidth / 2 - 200,
-        y: window.innerHeight / 2 - 125,
-        width: 400,
-        height: 250,
-      }}
-      minWidth={300}
-      minHeight={200}
-      maxWidth={800}
-      maxHeight={400}
-      bounds="window"
-      className="z-50"
-    >
-      <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 w-full h-full flex flex-col">
-        <div className="bg-gray-700 px-4 py-2 rounded-t-lg cursor-move flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">GitHub Authorization</h2>
-          <div className="w-4 h-4 bg-gray-600 rounded-full"></div>
-        </div>
-        <div className="p-6 flex flex-col items-center justify-center flex-1">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-400 mb-6 text-center">
-            Redirecting to GitHub for authentication...
-          </p>
-          <button className="text-blue-400 hover:text-blue-300 text-sm">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 max-w-md w-full mx-4">
+        <h2 className="text-xl font-bold text-white mb-4">Connect GitHub</h2>
+        <p className="text-gray-300 mb-6">
+          Connect your GitHub account to start managing repositories and syncing code.
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-400 hover:text-white transition"
+          >
             Cancel
+          </button>
+          <button
+            onClick={onConnect}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition"
+          >
+            Connect with GitHub
           </button>
         </div>
       </div>
-    </Rnd>
+    </div>
   );
 };
 

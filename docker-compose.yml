@@ -162,6 +162,7 @@ services:
       USER_DB_PASSWORD_LOCAL: ${USER_DB_PASSWORD_LOCAL}
       WORKSPACE_SERVICE_URL: ${WORKSPACE_SERVICE_URL}
       AI_SERVICE_URL: http://host.docker.internal:8000
+      GITHUB_SERVICE_URL: http://github-service:8080
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     ports:
       - "5000:8080"
