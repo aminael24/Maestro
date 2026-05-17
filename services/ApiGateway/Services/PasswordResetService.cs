@@ -45,7 +45,7 @@ public class PasswordResetService
     /// Déclenche un email de reset si l'utilisateur existe.
     /// Retourne TOUJOURS true (anti-énumération).
     /// </summary>
-    public async Task<bool> SendResetEmailAsync(
+    public virtual async Task<bool> SendResetEmailAsync(
         string email,
         string? clientId = null,
         string? redirectUri = null,

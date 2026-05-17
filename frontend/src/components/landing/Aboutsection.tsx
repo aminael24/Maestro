@@ -1,12 +1,13 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
-  GitBranch,
+  Server,
   Terminal,
   Lock,
-  BarChart2,
-  Rocket,
+  Bot,
+  Container,
   Award,
   Users,
   Calendar,
@@ -26,21 +27,36 @@ import {
 } from "framer-motion";
 
 // ─── Palette Maestro ────────────────────────────────────────────────────────
-// On mixe clair (sand, aqua) et sombre (navy, teal) pour ne pas rester tout sombre
 const P = {
   navy: "#083A4F",
   gold: "#A58D66",
   aqua: "#C0D5D6",
   teal: "#407E8C",
   sand: "#E5E1DD",
-  // dérivés clairs pour le fond et les cartes
-  sandLight: "#F5F2EE", // fond de section très clair
-  sandMid: "#EDE9E4", // fond cards
-  navyText: "#083A4F", // texte principal sur fond clair
-  tealLight: "#EAF3F5", // bg icon chips
+  sandLight: "#F5F2EE",
+  sandMid: "#EDE9E4",
+  navyText: "#083A4F",
+  tealLight: "#EAF3F5",
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// AboutSection — refonte alignée sur les services Maestro RÉELS
+//
+// Avant (générique)            →  Après (réel)
+//   CI/CD                      →  ApiGateway (.NET 8, OIDC + Keycloak)
+//   Sécurité                   →  Auth OIDC (cookies HttpOnly)
+//   Workspace                  →  WorkspaceService (Monaco Editor)
+//   Secrets                    →  Sécurité tokens (jamais exposés au JS)
+//   Monitoring                 →  AIService + RunnerService (LLaMA 3.1 + Docker)
+//   Deploy                     →  Infrastructure Docker Compose
+//
+// Stats : 4 microservices, 5 développeuses, 100% conteneurisé,
+//         1 commande pour démarrer.
+//
+// Bouton hero "Commencer" → /auth/register
+// ═══════════════════════════════════════════════════════════════════════
 export default function AboutSection() {
+  const navigate = useNavigate();
   const sectionRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: false, amount: 0.1 });
@@ -71,18 +87,19 @@ export default function AboutSection() {
     },
   };
 
+  // ── 6 services Maestro RÉELS ────────────────────────────────────────────
   const services = [
     {
-      icon: <GitBranch className="w-6 h-6" />,
+      icon: <Server className="w-6 h-6" />,
       secondaryIcon: (
         <Sparkles
           className="w-4 h-4 absolute -top-1 -right-1"
           style={{ color: P.teal }}
         />
       ),
-      title: "CI/CD",
+      title: "ApiGateway",
       description:
-        "Des pipelines automatisés de bout en bout. Chaque push déclenche build, test et déploiement sans intervention manuelle.",
+        "Gateway .NET 8 qui orchestre l'authentification OIDC via Keycloak, le routage vers les microservices et la gestion des cookies HttpOnly.",
       position: "left",
     },
     {
@@ -93,9 +110,9 @@ export default function AboutSection() {
           style={{ color: P.teal }}
         />
       ),
-      title: "Sécurité",
+      title: "Auth OIDC",
       description:
-        "Scan de dépendances, authentification OIDC via Keycloak et tokens jamais exposés au navigateur grâce aux cookies HttpOnly.",
+        "Authentification Keycloak en flux Authorization Code confidentiel. Aucun token n'est jamais exposé au navigateur — uniquement des cookies HttpOnly.",
       position: "left",
     },
     {
@@ -106,9 +123,9 @@ export default function AboutSection() {
           style={{ color: P.gold }}
         />
       ),
-      title: "Workspace",
+      title: "WorkspaceService",
       description:
-        "Un terminal centralisé pour piloter tous vos projets DevOps depuis une interface unique, claire et réactive.",
+        "Microservice .NET dédié aux fichiers projet et à l'éditeur Monaco. File tree et contenu de fichiers exposés via une API REST authentifiée.",
       position: "left",
     },
     {
@@ -119,55 +136,50 @@ export default function AboutSection() {
           style={{ color: P.teal }}
         />
       ),
-      title: "Secrets",
+      title: "Sécurité tokens",
       description:
-        "Vos variables d'environnement et tokens sont chiffrés, versionnés et jamais exposés dans les logs ni dans le navigateur.",
+        "Access, refresh et ID tokens stockés exclusivement en cookies HttpOnly SameSite. Le JavaScript du frontend ne voit jamais aucun token.",
       position: "right",
     },
     {
-      icon: <BarChart2 className="w-6 h-6" />,
+      icon: <Bot className="w-6 h-6" />,
       secondaryIcon: (
         <CheckCircle
           className="w-4 h-4 absolute -top-1 -right-1"
           style={{ color: P.teal }}
         />
       ),
-      title: "Monitoring",
+      title: "AIService + RunnerService",
       description:
-        "Visualisez en temps réel l'état de vos pipelines, le taux de succès et les métriques de performance de vos déploiements.",
+        "Service IA propulsé par LLaMA 3.1 pour la génération de code, couplé au RunnerService qui exécute le code dans des conteneurs Docker isolés.",
       position: "right",
     },
     {
-      icon: <Rocket className="w-6 h-6" />,
+      icon: <Container className="w-6 h-6" />,
       secondaryIcon: (
         <Star
           className="w-4 h-4 absolute -top-1 -right-1"
           style={{ color: P.gold }}
         />
       ),
-      title: "Deploy",
+      title: "Infrastructure Docker",
       description:
-        "Déploiements zero-downtime avec rollback instantané. Votre production reste stable même lors des mises à jour critiques.",
+        "Toute la plateforme tourne via Docker Compose : Keycloak, PostgreSQL, microservices, frontend Vite. Un seul `docker compose up` pour tout démarrer.",
       position: "right",
     },
   ];
 
+  // ── Stats RÉELLES du projet ─────────────────────────────────────────────
   const stats = [
-    { icon: <Award />, value: 500, label: "Pipelines orchestrés", suffix: "+" },
-    {
-      icon: <Users />,
-      value: 1200,
-      label: "Déploiements réussis",
-      suffix: "+",
-    },
-    { icon: <Calendar />, value: 99, label: "Uptime garanti", suffix: "%" },
-    {
-      icon: <TrendingUp />,
-      value: 12,
-      label: "Secondes en moyenne",
-      suffix: "s",
-    },
+    { icon: <Award />, value: 4, label: "Microservices .NET", suffix: "" },
+    { icon: <Users />, value: 5, label: "Développeuses", suffix: "" },
+    { icon: <Calendar />, value: 100, label: "Conteneurisé", suffix: "%" },
+    { icon: <TrendingUp />, value: 1, label: "Cmd pour démarrer", suffix: "" },
   ];
+
+  const handleCommencer = () => {
+    navigate("/auth/register");
+  };
 
   return (
     <section
@@ -176,14 +188,13 @@ export default function AboutSection() {
       style={{
         width: "100%",
         padding: "96px 32px",
-        // fond clair sable — contraste avec le hero sombre
         background: `linear-gradient(to bottom, ${P.sandLight}, ${P.sandMid})`,
         color: P.navyText,
         overflow: "hidden",
         position: "relative",
       }}
     >
-      {/* ── Blobs décoratifs — couleurs Maestro mais translucides ─────── */}
+      {/* ── Blobs décoratifs ───────────────────────────────────────── */}
       <motion.div
         style={{
           position: "absolute",
@@ -255,7 +266,7 @@ export default function AboutSection() {
         animate={isInView ? "visible" : "hidden"}
         variants={containerVariants}
       >
-        {/* ── En-tête ─────────────────────────────────────────────────── */}
+        {/* ── En-tête ─────────────────────────────────────────────── */}
         <motion.div
           style={{
             display: "flex",
@@ -281,7 +292,7 @@ export default function AboutSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <Zap style={{ width: 16, height: 16 }} />
-            DÉCOUVREZ NOTRE HISTOIRE
+            6 SERVICES MAESTRO
           </motion.span>
           <h2
             style={{
@@ -309,7 +320,7 @@ export default function AboutSection() {
         <motion.p
           style={{
             textAlign: "center",
-            maxWidth: 600,
+            maxWidth: 640,
             margin: "0 auto 64px",
             color: `${P.navyText}bb`,
             lineHeight: 1.8,
@@ -317,12 +328,13 @@ export default function AboutSection() {
           }}
           variants={itemVariants}
         >
-          Nous sommes une équipe passionnée de DevSecOps, convaincue que
-          sécurité et vélocité ne sont pas opposées. Maestro est l'outil que
-          nous aurions voulu avoir — puissant, clair, sans compromis.
+          Maestro c'est <strong>4 microservices .NET</strong>, un frontend React,
+          une stack Keycloak/PostgreSQL et un runner Docker — tout orchestré
+          par un Docker Compose unique. Bâti par 5 développeuses, 100%
+          conteneurisé, 1 commande pour démarrer.
         </motion.p>
 
-        {/* ── Grille 3 colonnes ────────────────────────────────────────── */}
+        {/* ── Grille 3 colonnes ────────────────────────────────────── */}
         <div
           style={{
             display: "grid",
@@ -369,7 +381,7 @@ export default function AboutSection() {
                 transition={{ duration: 0.8, delay: 0.3 }}
                 whileHover={{ scale: 1.03, transition: { duration: 0.3 } }}
               >
-                {/* Mockup visuel à la place d'une photo */}
+                {/* Mini-mockup pipeline aligné sur les vrais services */}
                 <div
                   style={{
                     width: "100%",
@@ -383,8 +395,12 @@ export default function AboutSection() {
                     padding: 24,
                   }}
                 >
-                  {/* mini pipeline animé */}
-                  {["build", "test", "scan", "deploy"].map((step, i) => (
+                  {[
+                    "api-gateway",
+                    "auth-oidc",
+                    "workspace",
+                    "ai-runner",
+                  ].map((step, i) => (
                     <motion.div
                       key={step}
                       style={{
@@ -397,7 +413,9 @@ export default function AboutSection() {
                             : i === 2
                               ? `${P.aqua}33`
                               : "rgba(255,255,255,0.05)",
-                        border: `1px solid ${i === 2 ? P.aqua : "rgba(255,255,255,0.1)"}`,
+                        border: `1px solid ${
+                          i === 2 ? P.aqua : "rgba(255,255,255,0.1)"
+                        }`,
                         display: "flex",
                         alignItems: "center",
                         gap: 10,
@@ -469,7 +487,7 @@ export default function AboutSection() {
                         color: P.sand,
                       }}
                     >
-                      99.8%
+                      docker
                     </div>
                     <div
                       style={{
@@ -478,7 +496,7 @@ export default function AboutSection() {
                         letterSpacing: "0.08em",
                       }}
                     >
-                      UPTIME
+                      COMPOSE UP
                     </div>
                   </div>
                 </div>
@@ -498,6 +516,8 @@ export default function AboutSection() {
                   transition={{ duration: 0.8, delay: 0.9 }}
                 >
                   <motion.button
+                    onClick={handleCommencer}
+                    aria-label="Commencer — créer un compte"
                     style={{
                       background: P.sand,
                       color: P.navy,
@@ -514,7 +534,7 @@ export default function AboutSection() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    Voir nos pipelines{" "}
+                    Commencer{" "}
                     <ArrowRight style={{ width: 14, height: 14 }} />
                   </motion.button>
                 </motion.div>
@@ -534,7 +554,7 @@ export default function AboutSection() {
                 transition={{ duration: 0.8, delay: 0.6 }}
               />
 
-              {/* Floating dots */}
+              {/* Points décoratifs */}
               <motion.div
                 style={{
                   position: "absolute",
@@ -545,7 +565,6 @@ export default function AboutSection() {
                   borderRadius: "50%",
                   background: `${P.gold}22`,
                 }}
-                style2={{ y: y1 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1, delay: 0.9 }}
@@ -620,7 +639,7 @@ export default function AboutSection() {
           </div>
         </div>
 
-        {/* ── Stats ───────────────────────────────────────────────────── */}
+        {/* ── Stats ─────────────────────────────────────────────── */}
         <motion.div
           ref={statsRef}
           style={{
@@ -638,7 +657,7 @@ export default function AboutSection() {
           ))}
         </motion.div>
 
-        {/* ── CTA banner ──────────────────────────────────────────────── */}
+        {/* ── CTA banner ─────────────────────────────────────────── */}
         <motion.div
           style={{
             marginTop: 80,
@@ -669,10 +688,12 @@ export default function AboutSection() {
               Prêt à orchestrer vos projets ?
             </h3>
             <p style={{ color: `${P.sand}99`, fontSize: "0.95rem" }}>
-              Démarrez gratuitement, déployez en quelques secondes.
+              Créez votre compte, déployez en quelques secondes.
             </p>
           </div>
           <motion.button
+            onClick={handleCommencer}
+            aria-label="Commencer — créer un compte"
             style={{
               background: `linear-gradient(135deg, ${P.gold}, ${P.aqua}dd)`,
               color: P.navy,
@@ -780,23 +801,6 @@ function ServiceItem({
       >
         {description}
       </motion.p>
-      <motion.div
-        style={{
-          paddingLeft: 52,
-          display: "flex",
-          alignItems: "center",
-          color: P.gold,
-          fontSize: "0.78rem",
-          fontWeight: 600,
-          marginTop: 8,
-        }}
-        initial={{ opacity: 0 }}
-        whileHover={{ opacity: 1 }}
-      >
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          En savoir plus <ArrowRight style={{ width: 12, height: 12 }} />
-        </span>
-      </motion.div>
     </motion.div>
   );
 }

@@ -6,36 +6,47 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ─── Données des features ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// FeaturesSection — 4 slides GSAP avec scroll pin, alignées sur la stack
+// Maestro RÉELLE.
+//
+//  Slide 01 — ApiGateway & Auth OIDC Keycloak  (avant: pipelines CI/CD)
+//  Slide 02 — WorkspaceService + Monaco Editor (avant: workspace générique)
+//  Slide 03 — AIService LLaMA 3.1 + RunnerService Docker
+//                                              (avant: sécurité by design)
+//  Slide 04 — Infrastructure Docker Compose + Kafka
+//                                              (avant: génération IA générique)
+// ═══════════════════════════════════════════════════════════════════════
+
 const FEATURES = [
   {
-    id: "pipelines",
+    id: "apigateway",
     num: "01",
     bg: "#083A4F", // Navy
     color: "#ffffff",
     accent: "#A58D66", // Gold
-    label: "Pipelines CI/CD",
-    headline: ["Build.", "Test.", "Deploy."],
+    label: "ApiGateway & Auth OIDC Keycloak",
+    headline: ["Gateway.", "OIDC.", "Cookies."],
     intro:
-      "Définissez vos étapes en quelques clics. Maestro orchestre l ensemble — vous gardez la main sur ce qui compte.",
+      "L'ApiGateway .NET 8 centralise l'authentification via Keycloak en flux Authorization Code confidentiel. Les tokens vivent en cookies HttpOnly — jamais exposés au navigateur.",
     items: [
       {
-        title: "CI/CD intégré",
-        desc: "Build, test, deploy en un seul flux automatisé sans configuration.",
+        title: "Keycloak OIDC",
+        desc: "Flux Authorization Code confidentiel, client maestro-api-gateway, secret côté serveur uniquement.",
       },
       {
-        title: "Templates prêts",
-        desc: "Node, Python, Go… des modèles prêts à l emploi pour démarrer vite.",
+        title: "Cookies HttpOnly",
+        desc: "Access, refresh et ID tokens stockés en cookies HttpOnly SameSite. Pas de localStorage.",
       },
       {
-        title: "Rollback en un clic",
-        desc: "Retour arrière instantané en cas de problème en production.",
+        title: "Logout 2 phases",
+        desc: "Back-channel logout côté serveur + end_session côté navigateur pour clear toutes les sessions.",
       },
     ],
     stats: [
-      { val: "12s", label: "Deploy moyen" },
-      { val: "99.8%", label: "Uptime garanti" },
-      { val: "0", label: "Config manuelle" },
+      { val: "OIDC", label: "Authorization Code" },
+      { val: "HttpOnly", label: "Cookies tokens" },
+      { val: "0", label: "Token côté JS" },
     ],
   },
   {
@@ -44,88 +55,88 @@ const FEATURES = [
     bg: "#407E8C", // Teal
     color: "#ffffff",
     accent: "#C0D5D6", // Aqua
-    label: "Workspace unifié",
-    headline: ["Un seul", "espace.", "Tout dedans."],
+    label: "WorkspaceService + Monaco Editor",
+    headline: ["Workspace.", "Monaco.", "API REST."],
     intro:
-      "Tableau de bord centralisé, partage des projets, vue temps réel sur les déploiements. Finis les jonglages entre 5 outils.",
+      "Le WorkspaceService expose le file tree, le contenu des fichiers et la persistance via une API REST authentifiée. Le frontend embarque Monaco Editor pour une expérience IDE complète.",
     items: [
       {
-        title: "Vue centralisée",
-        desc: "Tous vos projets et pipelines accessibles depuis un seul endroit.",
+        title: "File tree REST",
+        desc: "Lecture et navigation arborescente via GET /api/projects/{id}/files, authentifié JWT.",
       },
       {
-        title: "Collaboration temps réel",
-        desc: "Votre équipe voit les mêmes données, en même temps, sans refresh.",
+        title: "Monaco Editor",
+        desc: "Même moteur que VS Code, intégré au frontend React. Coloration, completion, raccourcis.",
       },
       {
-        title: "Historique complet",
-        desc: "Chaque déploiement tracé, annoté, consultable à tout moment.",
+        title: "Save streaming",
+        desc: "Lecture et écriture du contenu de fichier en PUT/GET avec proxy par l'ApiGateway.",
       },
     ],
     stats: [
-      { val: "∞", label: "Projets simultanés" },
-      { val: "< 1s", label: "Latence UI" },
-      { val: "100%", label: "Sync équipe" },
+      { val: "REST", label: "File tree API" },
+      { val: "Monaco", label: "Éditeur intégré" },
+      { val: "JWT", label: "Auth par requête" },
     ],
   },
   {
-    id: "security",
+    id: "ai-runner",
     num: "03",
     bg: "#A58D66", // Gold
     color: "#ffffff",
     accent: "#083A4F", // Navy
-    label: "Sécurité by design",
-    headline: ["Secrets", "jamais", "exposés."],
+    label: "AIService LLaMA 3.1 + RunnerService Docker",
+    headline: ["LLaMA 3.1.", "Docker.", "Isolation."],
     intro:
-      "Authentification Keycloak (OIDC), cookies HttpOnly côté backend, tokens jamais exposés au navigateur.",
+      "L'AIService génère le code via LLaMA 3.1, et le RunnerService l'exécute dans des conteneurs Docker isolés et éphémères. Chaque exécution part d'un environnement neuf.",
     items: [
       {
-        title: "OIDC + Keycloak",
-        desc: "Auth confidentielle, flux code sécurisé, sessions gérées server-side.",
+        title: "LLaMA 3.1",
+        desc: "Modèle de génération de code interrogé par l'AIService, prompts authentifiés.",
       },
       {
-        title: "Cookies HttpOnly",
-        desc: "Zéro risque XSS sur les tokens — jamais accessibles depuis le JS.",
+        title: "RunnerService",
+        desc: "Microservice .NET qui spawn des conteneurs Docker à la volée pour exécuter le code.",
       },
       {
-        title: "Scan dépendances",
-        desc: "Analyse automatique à chaque commit pour bloquer les vulnérabilités.",
+        title: "Sandbox éphémère",
+        desc: "Chaque run = un nouveau container. Pas de partage d'état entre exécutions.",
       },
     ],
     stats: [
-      { val: "A+", label: "Security grade" },
-      { val: "0", label: "Tokens exposés" },
-      { val: "100%", label: "Scans automatisés" },
+      { val: "3.1", label: "LLaMA version" },
+      { val: "Docker", label: "Sandbox par run" },
+      { val: "0", label: "État partagé" },
     ],
   },
   {
-    id: "ai",
+    id: "infra",
     num: "04",
     bg: "#E5E1DD", // Sand
     color: "#083A4F", // Navy text
     accent: "#407E8C", // Teal
-    label: "Génération IA",
-    headline: ["Code généré.", "Humain", "validé."],
+    label: "Infrastructure Docker Compose + Kafka",
+    headline: ["Compose up.", "Kafka.", "Une commande."],
     intro:
-      "Le service IA de Maestro génère du code sur demande via un LLM local (deepseek-coder) — intégré directement dans vos pipelines via RabbitMQ.",
+      "Toute la plateforme — Keycloak, PostgreSQL, microservices, frontend Vite, Kafka — démarre via un unique `docker compose up`. Zéro config locale, environnement reproductible.",
     items: [
       {
-        title: "deepseek-coder:6.7b",
-        desc: "Modèle local via Ollama — zéro envoi de données vers des API externes.",
+        title: "Docker Compose",
+        desc: "Stack complète déclarée dans un seul docker-compose.yml. Profils dev et prod.",
       },
       {
-        title: "Queue RabbitMQ",
-        desc: "Architecture asynchrone — les requêtes IA ne bloquent jamais le pipeline.",
+        title: "Kafka events",
+        desc: "Bus d'événements entre microservices pour les flux asynchrones (génération IA, runs).",
       },
       {
-        title: ".NET Worker Service",
-        desc: "Microservice dédié, scalable indépendamment du reste de la plateforme.",
+        title: "Postgres + Keycloak",
+        desc: "DB locale auto-migrée au démarrage, Keycloak avec realm Maestro pré-configuré.",
       },
     ],
     stats: [
-      { val: "6.7B", label: "Paramètres modèle" },
-      { val: "100%", label: "On-premise" },
-      { val: "< 3s", label: "Génération moyenne" },
+      { val: "1", label: "Cmd pour démarrer" },
+      { val: "100%", label: "Conteneurisé" },
+      { val: "Kafka", label: "Event bus" },
     ],
   },
 ];
@@ -241,7 +252,7 @@ export default function FeaturesSection() {
           ariaLabel={feat.label}
           style={{ backgroundColor: feat.bg, color: feat.color }}
         >
-          {/* ── Top label ── */}
+          {/* Top label */}
           <p
             style={{
               fontSize: "0.7rem",
@@ -262,7 +273,7 @@ export default function FeaturesSection() {
             }}
           />
 
-          {/* ── Headline ── */}
+          {/* Headline */}
           <div>
             <h2
               style={{
@@ -291,7 +302,7 @@ export default function FeaturesSection() {
             }}
           />
 
-          {/* ── Intro ── */}
+          {/* Intro */}
           <p
             style={{
               maxWidth: "52ch",
@@ -311,7 +322,7 @@ export default function FeaturesSection() {
             }}
           />
 
-          {/* ── Items ── */}
+          {/* Items */}
           <div
             style={{
               display: "flex",
@@ -357,7 +368,7 @@ export default function FeaturesSection() {
             }}
           />
 
-          {/* ── Stats ── */}
+          {/* Stats */}
           <div
             style={{
               display: "flex",

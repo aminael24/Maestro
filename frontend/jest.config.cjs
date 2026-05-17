@@ -1,32 +1,39 @@
 /**
  * jest.config.cjs
- * Configuration Jest pour un projet React / Vite
+ * Configuration Jest pour le projet Maestro frontend (React 19 + Vite)
  *
  * Placement : frontend/jest.config.cjs
  */
 module.exports = {
   testEnvironment: "jsdom",
 
-  // Transforme JSX / ESM avec babel-jest
+  // Transforme JSX / TSX / ESM avec babel-jest
   transform: {
-    "^.+\\.jsx?$": "babel-jest",
+    "^.+\\.[jt]sx?$": "babel-jest",
   },
 
-  // Transforme les fichiers dans node_modules qui sont ESM-only
+  // Bypasse certains modules ESM-only (react-router, framer-motion, lucide)
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-router-dom|react-router|@remix-run)/)",
+    "/node_modules/(?!(react-router-dom|react-router|@remix-run|framer-motion|lucide-react)/)",
   ],
 
-  // Alias pour import.meta.env (géré via le mock de env.js)
+  // Mappage des assets statiques et CSS vers des stubs
   moduleNameMapper: {
-    // Assets statiques → stub
     "\\.(png|jpg|jpeg|gif|svg|webp)$": "<rootDir>/src/__mocks__/fileMock.js",
     "\\.(css|less|scss)$": "<rootDir>/src/__mocks__/styleMock.js",
   },
 
-  // Setup après l'environnement jsdom
-  setupFilesAfterSetup: ["<rootDir>/src/setupTests.js"],
+  // Setup avant le test framework (polyfills bas niveau)
+  setupFiles: ["<rootDir>/src/setupGlobals.cjs"],
+  // Setup après que jsdom soit prêt (jest-dom matchers, etc.)
+  setupFilesAfterEnv: ["<rootDir>/src/setupTests.js"],
 
-  // Racine des tests
   roots: ["<rootDir>/src"],
+
+  testMatch: [
+    "**/__tests__/**/*.{js,jsx,ts,tsx}",
+    "**/?(*.)+(spec|test).{js,jsx,ts,tsx}",
+  ],
+
+  testPathIgnorePatterns: ["/node_modules/", "/cypress/"],
 };
