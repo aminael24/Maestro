@@ -11,7 +11,7 @@ public class ProfileImageService
         _environment = environment;
     }
 
-    public async Task<string?> SaveProfilePhotoAsync(IFormFile? file, CancellationToken cancellationToken = default)
+    public virtual async Task<string?> SaveProfilePhotoAsync(IFormFile? file, CancellationToken cancellationToken = default)
     {
         if (file is null || file.Length == 0)
             return null;

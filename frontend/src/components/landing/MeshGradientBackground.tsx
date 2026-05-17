@@ -213,7 +213,7 @@ export default function MeshGradientBackground({
                 color: `${P.sand}ee`,
               }}
             >
-              ✨ Plateforme DevSecOps
+               Plateforme DevSecOps
             </span>
           </motion.div>
 
@@ -311,26 +311,37 @@ export default function MeshGradientBackground({
             }}
           >
             {/* Glass */}
-            <motion.button
-              onClick={onLogin}
-              disabled={loggingIn}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              style={{
-                padding: "14px 32px",
-                borderRadius: "999px",
-                background: "transparent",
-                border: `2px solid rgba(192,213,214,0.30)`,
-                color: P.aqua,
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                cursor: loggingIn ? "not-allowed" : "pointer",
-                backdropFilter: "blur(8px)",
-                opacity: loggingIn ? 0.55 : 1,
-              }}
-            >
-              View Pricing
-            </motion.button>
+          <motion.button
+  type="button"
+  onClick={() => {
+    document
+      .getElementById("features")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }}
+  data-testid="hero-discover-btn"
+  aria-label="Découvrir les fonctionnalités"
+  whileHover={{ scale: 1.04 }}
+  whileTap={{ scale: 0.97 }}
+  style={{
+    padding: "14px 32px",
+    borderRadius: "999px",
+    background: "transparent",
+    border: `2px solid rgba(192,213,214,0.30)`,
+    color: P.aqua,
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    cursor: "pointer",
+    backdropFilter: "blur(8px)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+  }}
+>
+  Découvrir{" "}
+  <span aria-hidden="true" style={{ display: "inline-block" }}>
+    ↓
+  </span>
+</motion.button>
 
             {/* Gradient */}
             <motion.button

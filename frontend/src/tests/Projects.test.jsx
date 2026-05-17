@@ -1,7 +1,7 @@
-/** @vitest-environment jsdom */
+/** @jest-environment jsdom */
 import React from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, afterEach } from 'vitest';
+// describe / it / expect / afterEach sont globaux en Jest (pas besoin d'import).
 import { ProjectCard } from '../components/Projects/ProjectCard';
 import { BrowserRouter } from 'react-router-dom';
 

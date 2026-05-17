@@ -17,7 +17,7 @@ public class KeycloakService
     /// <summary>
     /// Variante publique pour les autres services (PasswordResetService).
     /// </summary>
-    public Task<string> GetAdminTokenPublicAsync(CancellationToken cancellationToken = default)
+    public virtual Task<string> GetAdminTokenPublicAsync(CancellationToken cancellationToken = default)
         => GetAdminTokenAsync(cancellationToken);
 
   //obtenir un token d'administrateur Keycloak pour pouvoir créer/supprimer des utilisateurs.
@@ -56,7 +56,7 @@ public class KeycloakService
             ?? throw new InvalidOperationException("Token admin vide.");
     }
 
-    public async Task<string> CreateUserAsync(RegisterRequest request, CancellationToken cancellationToken = default)
+    public virtual async Task<string> CreateUserAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
         var adminApiBaseUrl = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_API_BASE_URL")
             ?? throw new InvalidOperationException("KEYCLOAK_ADMIN_API_BASE_URL manquant.");
@@ -106,7 +106,7 @@ public class KeycloakService
         return keycloakUserId;
     }
 
-    public async Task DeleteUserAsync(string keycloakUserId, CancellationToken cancellationToken = default)
+    public virtual async Task DeleteUserAsync(string keycloakUserId, CancellationToken cancellationToken = default)
     {
         var adminApiBaseUrl = Environment.GetEnvironmentVariable("KEYCLOAK_ADMIN_API_BASE_URL")
             ?? throw new InvalidOperationException("KEYCLOAK_ADMIN_API_BASE_URL manquant.");
