@@ -249,11 +249,16 @@ app.MapPut("/internal/projects/{id}/files/content", async (
     int id,
     SaveFileRequest request,
     IProjectService svc,
+    IKafkaProducer kafka,
     ILogger<Program> log) =>
 {
     try
     {
         var saved = await svc.SaveFileContentAsync(id, request.Path, request.Content);
+        if (saved)
+        {
+            await kafka.ProduceFileUpdateAsync(new FileUpdateEvent(id, request.Path, request.Content));
+        }
         return saved ? Results.Ok() : Results.BadRequest("Chemin invalide ou accès refusé.");
     }
     catch (KeyNotFoundException)
