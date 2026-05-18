@@ -1,27 +1,29 @@
+/* ========================================
+   PROJECT LIST — grid
+   ======================================== */
+
 .project-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-
-  animation: fadeIn 0.4s ease;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.1rem;
+  animation: fadeIn 0.35s ease;
 }
 
-/* STATES */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .project-list__spinner,
 .project-list__error,
 .project-list__empty {
-  padding: 20px;
+  grid-column: 1 / -1;
+  padding: 3rem;
   text-align: center;
-  color: #777;
+  color: #9AAFB8;
+  font-size: 0.9rem;
 }
 
-/* ANIMATION */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-  }
+@media (max-width: 640px) {
+  .project-list { grid-template-columns: 1fr; }
 }
