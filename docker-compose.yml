@@ -1,4 +1,29 @@
 services:
+  # ── Notification Service ──────────────────────────────────────────
+  notification-service:
+    build:
+      context: ./services/NotificationService
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: always
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+      # SMTP — use any provider (Brevo, Mailgun, SES, Gmail)
+      SMTP_HOST:      ${SMTP_HOST}
+      SMTP_PORT:      ${SMTP_PORT}
+      SMTP_USERNAME:  ${SMTP_USERNAME}
+      SMTP_PASSWORD:  ${SMTP_PASSWORD}
+      EMAIL_FROM:     ${EMAIL_FROM}
+      EMAIL_FROM_NAME: Maestro
+      APP_URL:        ${FRONTEND_URL}
+    networks:
+      - maestro-net
+
   # ── Zookeeper ────────────────────────────────────────────
   zookeeper:
     image: confluentinc/cp-zookeeper:latest

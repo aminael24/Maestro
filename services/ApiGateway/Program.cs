@@ -157,6 +157,7 @@ builder.Services.AddScoped<KeycloakService>();
 builder.Services.AddScoped<OidcService>();
 builder.Services.AddScoped<LocalUserService>();
 builder.Services.AddScoped<RegisterService>();
+builder.Services.AddSingleton<ApiGateway.Services.KafkaProducer>();
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<ProfileImageService>();
 builder.Services.AddScoped<PasswordResetService>();

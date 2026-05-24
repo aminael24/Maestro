@@ -7,15 +7,17 @@ public class RegisterService
     private readonly KeycloakService _keycloakService;
     private readonly LocalUserService _localUserService;
     private readonly ProfileImageService _profileImageService;
-
+    private readonly KafkaProducer       _kafkaProducer;        // ← ADDED
     public RegisterService(
         KeycloakService keycloakService,
         LocalUserService localUserService,
-        ProfileImageService profileImageService)
+        ProfileImageService profileImageService,
+        KafkaProducer kafkaProducer)                            // ← ADDED
     {
-        _keycloakService = keycloakService;
-        _localUserService = localUserService;
+        _keycloakService     = keycloakService;
+        _localUserService    = localUserService;
         _profileImageService = profileImageService;
+        _kafkaProducer       = kafkaProducer;                   // ← ADDED
     }
 
     public virtual async Task<object> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -35,6 +37,16 @@ public class RegisterService
                 request,
                 profileUrl,
                 cancellationToken);
+
+            // ── ADDED: publish Kafka event so NotificationService sends welcome ──
+            await _kafkaProducer.PublishUserRegisteredAsync(
+                userId    : keycloakId,
+                username  : request.Username,
+                email     : request.Email,
+                firstName : request.FirstName,
+                lastName  : request.LastName,
+                cancellationToken);
+            // ─────────────────────────────────────────────────────────────────────
 
             return new
             {
