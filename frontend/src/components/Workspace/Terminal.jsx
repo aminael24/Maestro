@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAiStore } from "../../store/useAiStore";
 
-const Terminal = () => {
+const Terminal = ({ projectId }) => {
   const [logs, setLogs] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [backendUrl, setBackendUrl] = useState(null);
@@ -40,12 +40,7 @@ const Terminal = () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        projectId: crypto.randomUUID(),
-        sql: files.sql || "",
-        model: files.model || "",
-        controller: files.controller || "",
-        routes: files.routes || "",
-        frontend: files.frontend || "",
+        projectId: projectId,
       }),
     })
       .then((response) => {

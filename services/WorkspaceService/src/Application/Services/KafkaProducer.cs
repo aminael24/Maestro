@@ -44,6 +44,13 @@ public class KafkaProducer : IKafkaProducer, IDisposable
         _logger.LogInformation("[Kafka] Événement ProjectOpened envoyé pour le projet {ProjectId}", @event.ProjectId);
     }
 
+    public async Task ProduceFileUpdateAsync(FileUpdateEvent @event)
+    {
+        var message = JsonSerializer.Serialize(@event);
+        await ProduceAsync("project-updates", message);
+        _logger.LogInformation("[Kafka] Événement FileUpdate envoyé pour le projet {ProjectId}: {Path}", @event.ProjectId, @event.Path);
+    }
+
     public void Dispose()
     {
         _producer?.Dispose();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { api } from '../../services/api';
 import { useAiAssistant } from '../../hooks/useAiAssistant';
 import { useAiStore } from '../../store/useAiStore';
 
@@ -22,11 +23,14 @@ const fileLabels = {
   controller: 'controller.js', routes: 'routes.js', frontend: 'App.jsx',
 };
 
-const ChatBox = () => {
+const ChatBox = ({ projectId }) => {
   const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'ai', text: "Bonjour ! Quel projet CRUD souhaitez-vous créer aujourd'hui ?" }
-  ]);
+  const [chatHistory, setChatHistory] = useState(() => {
+    const saved = projectId ? localStorage.getItem(`chat_history_${projectId}`) : null;
+    return saved ? JSON.parse(saved) : [
+      { role: 'ai', text: "Bonjour ! Quel projet CRUD souhaitez-vous créer aujourd'hui ?" }
+    ];
+  });
 
   const { generateNewProject, askModification, isLoading, error } = useAiAssistant();
   const { explanation, files, selectedCode, selectedFile, activeFile, clearSelectedCode } = useAiStore();
@@ -36,6 +40,12 @@ const ChatBox = () => {
     if (scrollRef.current)
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [chatHistory, isLoading]);
+
+  useEffect(() => {
+    if (projectId) {
+      localStorage.setItem(`chat_history_${projectId}`, JSON.stringify(chatHistory));
+    }
+  }, [chatHistory, projectId]);
 
   useEffect(() => {
     if (explanation)
@@ -64,6 +74,27 @@ const ChatBox = () => {
     if (!hasGeneratedFiles && !snap.code) {
       // Aucun projet généré → génération complète
       await generateNewProject(userMsg);
+
+      // ✅ LIAISON RÉELLE : Persister tous les fichiers générés sur le WorkspaceService
+      if (projectId) {
+        const generatedFiles = useAiStore.getState().files;
+        const mapping = {
+          sql: "db/schema.sql",
+          model: "backend/model.js",
+          controller: "backend/controller.js",
+          routes: "backend/routes.js",
+          frontend: "frontend/App.jsx",
+        };
+
+        Object.entries(mapping).forEach(([key, path]) => {
+          if (generatedFiles[key]) {
+            api.put(`/api/projects/${projectId}/files/content`, {
+              path,
+              content: generatedFiles[key]
+            }).catch(err => console.error(`Erreur de synchro initiale pour ${path}:`, err));
+          }
+        });
+      }
     } else {
       // Modification : si pas de sélection, on cible le fichier actif
       if (!snap.file) {
@@ -75,6 +106,20 @@ const ChatBox = () => {
       const aiReply = response?.explanation
         || response?.message
         || `✅ ${fileLabels[snap.file] || 'Fichier'} mis à jour avec succès.`;
+
+      // ✅ LIAISON RÉELLE : Si on est dans un projet existant, on sauvegarde sur le WorkspaceService
+      if (projectId && snap.file && response?.updatedFile) {
+        try {
+          const filePath = snap.file === 'sql' ? 'db/schema.sql' : snap.file === 'frontend' ? 'frontend/App.jsx' : 'backend/' + fileLabels[snap.file];
+          await api.put(`/api/projects/${projectId}/files/content`, {
+            path: filePath,
+            content: response.updatedFile
+          });
+        } catch (err) {
+          console.error("Erreur lors de la persistance automatique:", err);
+        }
+      }
+
       setChatHistory(prev => [...prev, { role: 'ai', text: aiReply }]);
     }
   };

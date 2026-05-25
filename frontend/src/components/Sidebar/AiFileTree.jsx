@@ -22,7 +22,7 @@ const fileIcons = {
 
 // Structure complète — on filtre selon le type
 const ALL_STRUCTURE = [
-  { folder: 'db',       icon: '🗄️', types: ['Fullstack'],            files: [{ name: 'schema.sql', key: 'sql',        type: 'sql'  }] },
+  { folder: 'db',       icon: '🗄️', types: ['Fullstack', 'Backend'],            files: [{ name: 'schema.sql', key: 'sql',        type: 'sql'  }] },
   { folder: 'backend',  icon: '⚙️', types: ['Fullstack', 'Backend'], files: [
     { name: 'model.js',      key: 'model',      type: 'js' },
     { name: 'controller.js', key: 'controller', type: 'js' },

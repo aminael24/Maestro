@@ -4,6 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddSingleton<DockerService>();
+builder.Services.AddHostedService<Maestro.RunnerService.Services.KafkaFileConsumer>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>

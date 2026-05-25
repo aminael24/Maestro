@@ -6,4 +6,5 @@ public interface IKafkaProducer
 {
     Task ProduceAsync(string topic, string message);
     Task ProduceProjectOpenedAsync(ProjectOpenedEvent @event);
+    Task ProduceFileUpdateAsync(FileUpdateEvent @event);
 }
