@@ -83,9 +83,11 @@ jobs:
         run: npm run lint || true
 
       - name: Tests unitaires Jest
-        # Exclut cypress/ pour que Jest n'essaie pas d'exécuter
-        # les fichiers .cy.js (qui utilisent les globals Cypress).
-        run: npx jest --ci --reporters=default --coverage --testPathIgnorePatterns=/node_modules/ --testPathIgnorePatterns=/cypress/
+        # On laisse Jest utiliser jest.config.cjs (qui définit roots et
+        # testPathIgnorePatterns). Pas de flags CLI qui surchargeraient
+        # la config — sinon Jest oublie son `roots: src/` et scanne aussi
+        # le dossier cypress/.
+        run: npx jest --ci --reporters=default --coverage
 
       - name: Upload coverage
         if: always()
