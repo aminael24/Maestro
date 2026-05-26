@@ -1,12 +1,12 @@
 # ═══════════════════════════════════════════════════════════════════════════
-#  Maestro — CI/CD Pipeline
+#  Maestro — CI/CD Pipeline complet
 # ═══════════════════════════════════════════════════════════════════════════
 #
 #  Stack de tests :
 #
 #    Frontend (React) :
 #      - Jest + React Testing Library      → UNITAIRES
-#      - Cypress                           → FONCTIONNELS (E2E)
+#      - Cypress                           → FONCTIONNELS (E2E avec backend)
 #
 #    Backend ApiGateway (.NET 8) :
 #      - xUnit + Moq + FluentAssertions    → UNITAIRES
@@ -15,17 +15,13 @@
 #    Backend WorkspaceService (.NET 8) :
 #      - xUnit + Moq                       → UNITAIRES   (TODO: décommenter)
 #      - xUnit + WebApplicationFactory     → INTÉGRATION (TODO: décommenter)
-#      → Actuellement commentés car FakeKafkaProducer n'implémente pas
-#         ProduceFileUpdateAsync. À décommenter quand le fake sera corrigé.
 #
 #    AIService (Python / FastAPI) :
 #      - pytest                            → UNITAIRES + INTÉGRATION
-#      → Skip auto si pas de dossier tests/ pour l'instant.
 #
-#    Build :
-#      - Compilation .NET de tous les microservices
-#      - Build production du frontend (Vite)
-#      - Build images Docker (push sur GHCR uniquement sur main)
+#  Pour les tests Cypress E2E, le pipeline démarre le backend complet via
+#  docker compose up (Keycloak, Postgres, ApiGateway, etc.) — exactement
+#  comme sur votre machine locale.
 #
 #  Déclencheurs :
 #    push sur main / dev
@@ -83,10 +79,6 @@ jobs:
         run: npm run lint || true
 
       - name: Tests unitaires Jest
-        # On laisse Jest utiliser jest.config.cjs (qui définit roots et
-        # testPathIgnorePatterns). Pas de flags CLI qui surchargeraient
-        # la config — sinon Jest oublie son `roots: src/` et scanne aussi
-        # le dossier cypress/.
         run: npx jest --ci --reporters=default --coverage
 
       - name: Upload coverage
@@ -151,8 +143,7 @@ jobs:
           dotnet build   services/NotificationService/NotificationService.csproj -c Release --no-restore
 
   # ═══════════════════════════════════════════════════════════════════════
-  # 3) BACKEND UNIT TESTS
-  #    xUnit + Moq + FluentAssertions
+  # 3) BACKEND UNIT TESTS — xUnit + Moq + FluentAssertions
   # ═══════════════════════════════════════════════════════════════════════
   backend-unit:
     name: Backend · xUnit unitaires
@@ -206,8 +197,7 @@ jobs:
           retention-days: 14
 
   # ═══════════════════════════════════════════════════════════════════════
-  # 4) BACKEND INTEGRATION TESTS
-  #    xUnit + WebApplicationFactory
+  # 4) BACKEND INTEGRATION TESTS — xUnit + WebApplicationFactory
   # ═══════════════════════════════════════════════════════════════════════
   backend-integration:
     name: Backend · xUnit intégration
@@ -231,8 +221,6 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: ApiGateway.IntegrationTests
-        # WebApplicationFactory monte la pipeline en mémoire (pas besoin
-        # de Docker), avec EF InMemory et SKIP_JWKS_FETCH=1 → autonome.
         env:
           SKIP_JWKS_FETCH: "1"
         run: |
@@ -263,15 +251,11 @@ jobs:
           retention-days: 14
 
   # ═══════════════════════════════════════════════════════════════════════
-  # 5) PYTHON AISERVICE — pytest (unit + intégration)
-  #    Skip auto si pas de dossier tests/.
+  # 5) PYTHON AISERVICE — pytest (FastAPI)
   # ═══════════════════════════════════════════════════════════════════════
   python-tests:
     name: AIService · pytest
     runs-on: ubuntu-latest
-    # Tant que les tests pytest ne sont pas écrits, on ne bloque pas la CI.
-    # Une fois les tests présents, retirer continue-on-error pour les rendre
-    # bloquants.
     continue-on-error: true
 
     steps:
@@ -307,14 +291,17 @@ jobs:
           fi
 
   # ═══════════════════════════════════════════════════════════════════════
-  # 6) CYPRESS E2E — Tests fonctionnels frontend
+  # 6) CYPRESS E2E — Tests fonctionnels avec backend Docker complet
+  #
+  # Démarre tout le stack via docker compose (comme sur votre PC) :
+  # Keycloak + Postgres + ApiGateway + Kafka + Zookeeper, puis Cypress.
   # ═══════════════════════════════════════════════════════════════════════
   cypress-e2e:
     name: Frontend · Cypress (fonctionnels)
     needs: frontend-unit
     runs-on: ubuntu-latest
-    # E2E peut être instable (timing, services backend non lancés en CI).
-    # Pour l'instant non-bloquant — à durcir une fois les tests stables.
+    # E2E peut être instable (timing des services). Non-bloquant le temps
+    # de stabiliser. Une fois stable, retirer cette ligne.
     continue-on-error: true
 
     steps:
@@ -332,9 +319,97 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # ─────────────────────────────────────────────────────────────────
+      # Vérifier que les secrets nécessaires existent. Les vraies valeurs
+      # SMTP / GROQ sont mises dans GitHub Secrets (Settings → Secrets).
+      # Si non définis, on met des valeurs factices pour que les services
+      # démarrent quand même (Cypress ne teste pas l'envoi de mail).
+      # ─────────────────────────────────────────────────────────────────
+      - name: Prepare .env for CI
+        run: |
+          cat > .env <<'ENVEOF'
+          # Keycloak admin
+          KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME=admin
+          KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD=admin123
+
+          # Keycloak DB
+          KEYCLOAK_DB_NAME=keycloakdb
+          KEYCLOAK_DB_USER=keycloak
+          KEYCLOAK_DB_PASSWORD=keycloakpass
+
+          # User DB
+          USER_DB_NAME=userdb
+          USER_DB_USER=userapp
+          USER_DB_PASSWORD=userapppass
+
+          # Keycloak URLs
+          KEYCLOAK_REALM_URL=http://keycloak:8080/realms/maestro
+          KEYCLOAK_TOKEN_ENDPOINT=http://keycloak:8080/realms/maestro/protocol/openid-connect/token
+          KEYCLOAK_PUBLIC_URL=http://localhost:8080
+          FRONTEND_URL=http://localhost:5173
+
+          # SMTP (valeurs factices pour CI — pas d'email envoyé)
+          SMTP_HOST=smtp.example.com
+          SMTP_PORT=587
+          SMTP_USERNAME=ci@example.com
+          SMTP_PASSWORD=ci-password
+          EMAIL_FROM=ci@example.com
+
+          # AI (factice — secret réel à mettre dans GitHub Secrets si besoin)
+          GROQ_API_KEY=ci-fake-key
+          ENVEOF
+          echo ".env créé pour la CI"
+
+      # ─────────────────────────────────────────────────────────────────
+      # Démarrer le backend via docker compose (les images sont buildées
+      # depuis les Dockerfiles locaux comme sur votre PC).
+      # ─────────────────────────────────────────────────────────────────
+      - name: Démarrer le backend (docker compose)
+        run: |
+          docker compose up -d \
+            keycloak-db \
+            user-db \
+            zookeeper \
+            kafka \
+            keycloak \
+            api-gateway \
+            workspace-service \
+            ai-service \
+            notification-service \
+            runner-service
+          echo "Services démarrés. Liste :"
+          docker compose ps
+
+      - name: Attendre que les services soient prêts
+        run: |
+          echo "Attente de l'ApiGateway sur http://localhost:5000..."
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null -w "%{http_code}" http://localhost:5000 | grep -qE "^(200|301|302|401|404)$"; then
+              echo "✅ ApiGateway prêt après ${i} essais"
+              break
+            fi
+            if [ $i -eq 90 ]; then
+              echo "❌ ApiGateway pas prêt après 90 essais — logs :"
+              docker compose logs --tail 100 api-gateway
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "Attente de Keycloak sur http://localhost:8080..."
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/realms/maestro | grep -qE "^(200|404)$"; then
+              echo "✅ Keycloak prêt après ${i} essais"
+              break
+            fi
+            if [ $i -eq 90 ]; then
+              echo "⚠️  Keycloak pas prêt mais on continue"
+              break
+            fi
+            sleep 2
+          done
+
       - name: Cypress run
-        # cypress-io/github-action démarre Cypress, attend que le frontend
-        # soit prêt (start + wait-on), puis lance les specs.
         uses: cypress-io/github-action@v6
         with:
           working-directory: frontend
@@ -344,6 +419,20 @@ jobs:
           wait-on-timeout: 120
           browser: chrome
           spec: cypress/e2e/**/*.cy.js
+
+      - name: Logs backend si échec
+        if: failure()
+        run: |
+          echo "===== api-gateway ====="
+          docker compose logs --tail 100 api-gateway || true
+          echo "===== keycloak ====="
+          docker compose logs --tail 100 keycloak || true
+          echo "===== workspace-service ====="
+          docker compose logs --tail 100 workspace-service || true
+
+      - name: Arrêt du backend
+        if: always()
+        run: docker compose down -v
 
       - name: Upload screenshots si échec
         if: failure()
