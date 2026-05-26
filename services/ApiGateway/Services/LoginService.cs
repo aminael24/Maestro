@@ -12,7 +12,7 @@ public class LoginService
         _httpClientFactory = httpClientFactory;
     }
 
-    public async Task<object> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    public virtual async Task<OidcTokenSet> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var tokenEndpoint = Environment.GetEnvironmentVariable("KEYCLOAK_TOKEN_ENDPOINT")
             ?? throw new InvalidOperationException("KEYCLOAK_TOKEN_ENDPOINT manquant.");
@@ -30,7 +30,8 @@ public class LoginService
                 ["client_id"]     = clientId,
                 ["client_secret"] = clientSecret,
                 ["username"]      = request.Username,
-                ["password"]      = request.Password
+                ["password"]      = request.Password,
+                ["scope"]         = "openid"
             }),
             cancellationToken);
 
@@ -39,13 +40,14 @@ public class LoginService
             throw new InvalidOperationException($"Erreur login Keycloak: {content}");
 
         using var doc = JsonDocument.Parse(content);
-        return new
+        var root = doc.RootElement;
+
+        return new OidcTokenSet
         {
-            access_token       = doc.RootElement.GetProperty("access_token").GetString(),
-            refresh_token      = doc.RootElement.GetProperty("refresh_token").GetString(),
-            expires_in         = doc.RootElement.GetProperty("expires_in").GetInt32(),
-            refresh_expires_in = doc.RootElement.GetProperty("refresh_expires_in").GetInt32(),
-            token_type         = doc.RootElement.GetProperty("token_type").GetString()
+            AccessToken  = root.GetProperty("access_token").GetString() ?? string.Empty,
+            RefreshToken = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() : null,
+            IdToken      = root.TryGetProperty("id_token", out var idt) ? idt.GetString() : null,
+            ExpiresIn    = root.TryGetProperty("expires_in", out var ex) ? ex.GetInt32() : 0,
         };
     }
 }

@@ -667,8 +667,10 @@ export default function LandingPage() {
 
   return (
     <div className="maestro-landing">
-      <MeshGradientBackground />
-
+<MeshGradientBackground
+  loggingIn={loggingIn}
+  onLogin={handleLogin}
+/>
       {/* ══ NAVBAR ════════════════════════════════════════ */}
       <nav
         className={`m-nav ${scrolled ? "scrolled" : "top"}`}

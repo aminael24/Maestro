@@ -1,7 +1,6 @@
-// src/components/landing/MeshGradientBackground.tsx
+// src/components/landing/MeshGradientBackground.jsx
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const P = {
@@ -13,80 +12,36 @@ const P = {
 };
 
 const BLOBS = [
-  {
-    color: P.teal,
-    size: 700,
-    left: "0%",
-    top: "-5%",
-    dur: 18,
-    delay: 0,
-    opacity: 0.75,
-  },
-  {
-    color: P.gold,
-    size: 550,
-    left: "55%",
-    top: "35%",
-    dur: 22,
-    delay: 1.2,
-    opacity: 0.65,
-  },
-  {
-    color: P.aqua,
-    size: 500,
-    left: "35%",
-    top: "-15%",
-    dur: 26,
-    delay: 2.4,
-    opacity: 0.7,
-  },
-  {
-    color: P.sand,
-    size: 450,
-    left: "-5%",
-    top: "50%",
-    dur: 20,
-    delay: 3.6,
-    opacity: 0.55,
-  },
-  {
-    color: P.navy,
-    size: 400,
-    left: "75%",
-    top: "0%",
-    dur: 15,
-    delay: 4.8,
-    opacity: 0.8,
-  },
-  {
-    color: P.gold,
-    size: 350,
-    left: "20%",
-    top: "60%",
-    dur: 24,
-    delay: 1.8,
-    opacity: 0.6,
-  },
+  { color: P.teal, size: 700, left: "0%",  top: "-5%",  dur: 18, delay: 0,   opacity: 0.75 },
+  { color: P.gold, size: 550, left: "55%", top: "35%",  dur: 22, delay: 1.2, opacity: 0.65 },
+  { color: P.aqua, size: 500, left: "35%", top: "-15%", dur: 26, delay: 2.4, opacity: 0.7  },
+  { color: P.sand, size: 450, left: "-5%", top: "50%",  dur: 20, delay: 3.6, opacity: 0.55 },
+  { color: P.navy, size: 400, left: "75%", top: "0%",   dur: 15, delay: 4.8, opacity: 0.8  },
+  { color: P.gold, size: 350, left: "20%", top: "60%",  dur: 24, delay: 1.8, opacity: 0.6  },
 ];
 
-// ─── Props ───────────────────────────────────────────────────────────────────
-interface Props {
-  loggingIn: boolean;
-  onLogin: (e?: React.MouseEvent) => void;
-  activeLogLine: number;
-}
-
 export default function MeshGradientBackground({
-  loggingIn,
+  loggingIn = false,
   onLogin,
-  activeLogLine,
-}: Props) {
+  activeLogLine = 3,
+}) {
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 60);
     return () => clearTimeout(t);
   }, []);
+
+  // Garde-fou : si onLogin n'est pas passé, on log un avertissement
+  const handleLoginClick = (e) => {
+    if (typeof onLogin === "function") {
+      onLogin(e);
+    } else {
+      console.warn(
+        "[MeshGradientBackground] onLogin prop manquante — le bouton 'Se connecter' n'a aucune action."
+      );
+    }
+  };
 
   return (
     <div
@@ -178,7 +133,6 @@ export default function MeshGradientBackground({
               overflow: "hidden",
             }}
           >
-            {/* shimmer line */}
             <span
               style={{
                 position: "absolute",
@@ -213,7 +167,7 @@ export default function MeshGradientBackground({
                 color: `${P.sand}ee`,
               }}
             >
-               Plateforme DevSecOps
+              Plateforme DevSecOps
             </span>
           </motion.div>
 
@@ -230,7 +184,6 @@ export default function MeshGradientBackground({
               gap: "4px",
             }}
           >
-            {/* light + gradient animé */}
             <motion.span
               style={{
                 display: "block",
@@ -249,7 +202,6 @@ export default function MeshGradientBackground({
               Orchestrez
             </motion.span>
 
-            {/* black */}
             <span
               style={{
                 display: "block",
@@ -263,7 +215,6 @@ export default function MeshGradientBackground({
               vos projets
             </span>
 
-            {/* light italic */}
             <span
               style={{
                 display: "block",
@@ -310,45 +261,48 @@ export default function MeshGradientBackground({
               marginBottom: "32px",
             }}
           >
-            {/* Glass */}
-          <motion.button
-  type="button"
-  onClick={() => {
-    document
-      .getElementById("features")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }}
-  data-testid="hero-discover-btn"
-  aria-label="Découvrir les fonctionnalités"
-  whileHover={{ scale: 1.04 }}
-  whileTap={{ scale: 0.97 }}
-  style={{
-    padding: "14px 32px",
-    borderRadius: "999px",
-    background: "transparent",
-    border: `2px solid rgba(192,213,214,0.30)`,
-    color: P.aqua,
-    fontSize: "0.875rem",
-    fontWeight: 500,
-    cursor: "pointer",
-    backdropFilter: "blur(8px)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-  }}
->
-  Découvrir{" "}
-  <span aria-hidden="true" style={{ display: "inline-block" }}>
-    ↓
-  </span>
-</motion.button>
-
-            {/* Gradient */}
+            {/* Glass — Découvrir */}
             <motion.button
-              onClick={onLogin}
-              disabled={loggingIn}
+              type="button"
+              onClick={() => {
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              data-testid="hero-discover-btn"
+              aria-label="Découvrir les fonctionnalités"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
+              style={{
+                padding: "14px 32px",
+                borderRadius: "999px",
+                background: "transparent",
+                border: `2px solid rgba(192,213,214,0.30)`,
+                color: P.aqua,
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                cursor: "pointer",
+                backdropFilter: "blur(8px)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              Découvrir{" "}
+              <span aria-hidden="true" style={{ display: "inline-block" }}>
+                ↓
+              </span>
+            </motion.button>
+
+            {/* Gradient — Se connecter */}
+            <motion.button
+              type="button"
+              onClick={handleLoginClick}
+              disabled={loggingIn}
+              data-testid="hero-login-btn"
+              aria-label="Se connecter"
+              whileHover={!loggingIn ? { scale: 1.04 } : {}}
+              whileTap={!loggingIn ? { scale: 0.97 } : {}}
               style={{
                 padding: "14px 32px",
                 borderRadius: "999px",
@@ -720,7 +674,6 @@ export default function MeshGradientBackground({
           justifyContent: "center",
         }}
       >
-        {/* Anneau pulsant */}
         <motion.div
           style={{
             position: "absolute",
@@ -743,7 +696,6 @@ export default function MeshGradientBackground({
           animate={{ rotate: 360 }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
         />
-        {/* Texte rotatif */}
         <motion.svg
           style={{
             position: "absolute",
@@ -781,8 +733,8 @@ export default function MeshGradientBackground({
 }
 
 // ─── Helper : nœud pipeline ──────────────────────────────────────────────────
-function PipelineNode({ state }: { state: string }) {
-  const base: React.CSSProperties = {
+function PipelineNode({ state }) {
+  const base = {
     width: 36,
     height: 36,
     borderRadius: "50%",

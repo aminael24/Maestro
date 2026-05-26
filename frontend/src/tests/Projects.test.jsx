@@ -31,7 +31,7 @@ describe('ProjectCard Component', () => {
     expect(screen.getByText('Maestro Dashboard')).toBeDefined();
     expect(screen.getByText('Fullstack')).toBeDefined();
     // Vérifie le formatage de la date FR
-    expect(screen.getByText(/20\/05\/2026/)).toBeDefined();
+   expect(screen.getByText(/20 mai 2026/)).toBeDefined();
   });
 
   it('ouvre la modale de confirmation lors du clic sur supprimer', () => {

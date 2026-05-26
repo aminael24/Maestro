@@ -59,8 +59,8 @@ export default function RegisterPage() {
       formData.append("password", form.password);
       if (form.profilePhoto) formData.append("profilePhoto", form.profilePhoto);
       await registerUser(formData);
-      setSuccess("Compte créé avec succès. Redirection vers la connexion...");
-      setTimeout(() => navigate("/auth/login"), 1500);
+     setSuccess("Compte créé avec succès. Redirection vers votre espace...");
+navigate("/workspace/dashboard");
     } catch (err) {
       setError(err.message || "Erreur de création de compte");
     } finally {

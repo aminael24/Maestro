@@ -103,7 +103,16 @@ describe("RegisterPage", () => {
     mockNavigate.mockClear();
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    // Nettoie les fake timers laissés en suspens par certains tests
+    // (sinon un setTimeout planifié dans un test précédent peut firer
+    // pendant le test suivant et polluer les mocks).
+    if (jest.isMockFunction(setTimeout)) {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    }
+    cleanup();
+  });
 
   it("affiche tous les champs obligatoires", () => {
     renderRegister();
@@ -140,24 +149,16 @@ describe("RegisterPage", () => {
     expect(formData.get("lastName")).toBe("El Fassi");
   });
 
-  it("affiche un message succès puis redirige vers /auth/login après 1.5s", async () => {
-    jest.useFakeTimers();
+it("après succès, redirige vers /workspace/dashboard", async () => {
     mockRegisterUser.mockResolvedValue({ message: "ok" });
     renderRegister();
     fillForm();
     await submitForm();
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/Compte créé avec succès/i),
-      ).toBeInTheDocument(),
+      expect(mockNavigate).toHaveBeenCalledWith("/workspace/dashboard"),
     );
-
-    act(() => {
-      jest.advanceTimersByTime(1600);
-    });
-    expect(mockNavigate).toHaveBeenCalledWith("/auth/login");
-    jest.useRealTimers();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
   it("affiche le message d'erreur si registerUser throw", async () => {

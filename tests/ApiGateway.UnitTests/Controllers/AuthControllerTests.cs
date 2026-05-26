@@ -29,9 +29,9 @@ public class AuthControllerTests
     private readonly Mock<RegisterService> _registerServiceMock;
     private readonly Mock<LocalUserService> _localUserServiceMock;
     private readonly Mock<OidcService> _oidcServiceMock;
-    private readonly Mock<PasswordResetService> _passwordResetServiceMock;
-    private readonly Mock<IWebHostEnvironment> _envMock;
-    private readonly Mock<ILogger<AuthController>> _loggerMock;
+   private readonly Mock<PasswordResetService> _passwordResetServiceMock;
+    private readonly Mock<LoginService> _loginServiceMock;
+    private readonly Mock<IWebHostEnvironment> _envMock;    private readonly Mock<ILogger<AuthController>> _loggerMock;
     private readonly AppDbContext _dbContext;
 
     public AuthControllerTests()
@@ -48,20 +48,36 @@ public class AuthControllerTests
         _dbContext = NewInMemoryDb();
         _localUserServiceMock = new Mock<LocalUserService>(_dbContext);
 
-        _registerServiceMock = new Mock<RegisterService>(
-            keycloakServiceMock.Object,
-            _localUserServiceMock.Object,
-            profileImageServiceMock.Object);
+   var kafkaLoggerMock = new Mock<ILogger<KafkaProducer>>();
+var kafkaProducerMock = new Mock<KafkaProducer>(kafkaLoggerMock.Object);
+
+_registerServiceMock = new Mock<RegisterService>(
+    keycloakServiceMock.Object,
+    _localUserServiceMock.Object,
+    profileImageServiceMock.Object,
+    kafkaProducerMock.Object);
 
         _oidcServiceMock = new Mock<OidcService>(
             httpClientFactoryMock.Object,
             oidcLoggerMock.Object);
 
         var passwordResetLoggerMock = new Mock<ILogger<PasswordResetService>>();
-        _passwordResetServiceMock = new Mock<PasswordResetService>(
+    _passwordResetServiceMock = new Mock<PasswordResetService>(
             keycloakServiceMock.Object,
             httpClientFactoryMock.Object,
             passwordResetLoggerMock.Object);
+
+        // Mock du LoginService utilisé par /auth/register pour auto-login.
+        // Par défaut on simule un échec silencieux (Direct Grants indisponibles
+        // en test) — le compte est créé mais aucun cookie n'est posé,
+        // exactement comme avant le refacto. Les tests existants ne vérifient
+        // pas la pose de cookies donc ils restent valides.
+        _loginServiceMock = new Mock<LoginService>(httpClientFactoryMock.Object);
+        _loginServiceMock
+            .Setup(s => s.LoginAsync(
+                It.IsAny<LoginRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("auto-login indisponible en test"));
 
         _envMock = new Mock<IWebHostEnvironment>();
         _envMock.Setup(e => e.EnvironmentName).Returns("Development");
@@ -77,13 +93,14 @@ public class AuthControllerTests
         return new AppDbContext(opts);
     }
 
-    private AuthController NewController()
+   private AuthController NewController()
     {
         var controller = new AuthController(
             _registerServiceMock.Object,
             _localUserServiceMock.Object,
             _oidcServiceMock.Object,
             _passwordResetServiceMock.Object,
+            _loginServiceMock.Object,
             _envMock.Object,
             _loggerMock.Object);
 

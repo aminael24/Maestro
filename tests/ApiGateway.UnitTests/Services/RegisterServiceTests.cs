@@ -4,19 +4,12 @@ using ApiGateway.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
 namespace ApiGateway.UnitTests.Services;
 
-/// <summary>
-/// Tests unitaires xUnit + Moq + FluentAssertions pour RegisterService.
-///
-/// On vérifie surtout :
-///   - Le flow heureux : Keycloak → upload photo → LocalUser
-///   - Le rollback : si LocalUser fail, on appelle DeleteUserAsync(keycloakId)
-///   - Le rollback : si Photo fail, idem
-/// </summary>
 public class RegisterServiceTests
 {
     private static AppDbContext NewInMemoryDb() =>
@@ -38,7 +31,14 @@ public class RegisterServiceTests
         var photoMock = new Mock<ProfileImageService>(envMock.Object);
         var userMock  = new Mock<LocalUserService>(NewInMemoryDb());
 
-        var sut = new RegisterService(kcMock.Object, userMock.Object, photoMock.Object);
+        var kafkaLoggerMock = new Mock<ILogger<KafkaProducer>>();
+        var kafkaMock = new Mock<KafkaProducer>(kafkaLoggerMock.Object);
+
+        var sut = new RegisterService(
+            kcMock.Object,
+            userMock.Object,
+            photoMock.Object,
+            kafkaMock.Object);
         return (sut, kcMock, userMock, photoMock);
     }
 
@@ -76,15 +76,14 @@ public class RegisterServiceTests
         var result = await sut.RegisterAsync(ValidRequest(), CancellationToken.None);
 
         result.Should().NotBeNull();
-        // Vérifie le contenu de l'objet anonyme retourné via reflection JSON
-      var json = System.Text.Json.JsonSerializer.Serialize(result,
-    new System.Text.Json.JsonSerializerOptions
-    {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    });
-json.Should().Contain("kc-uuid-123");
-json.Should().Contain("/uploads/profiles/abc.png");
-json.Should().Contain("Compte créé avec succès");
+        var json = System.Text.Json.JsonSerializer.Serialize(result,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            });
+        json.Should().Contain("kc-uuid-123");
+        json.Should().Contain("/uploads/profiles/abc.png");
+        json.Should().Contain("Compte créé avec succès");
 
         kcMock.Verify(s => s.CreateUserAsync(It.IsAny<RegisterRequest>(), It.IsAny<CancellationToken>()),
                        Times.Once);
@@ -160,7 +159,6 @@ json.Should().Contain("Compte créé avec succès");
     {
         var (sut, kcMock, userMock, photoMock) = BuildSut();
 
-        // Keycloak fail tout de suite → keycloakId reste null → rien à rollback
         kcMock.Setup(s => s.CreateUserAsync(It.IsAny<RegisterRequest>(), It.IsAny<CancellationToken>()))
               .ThrowsAsync(new InvalidOperationException("Keycloak unreachable"));
 
@@ -197,7 +195,6 @@ json.Should().Contain("Compte créé avec succès");
 
         var act = () => sut.RegisterAsync(ValidRequest(), CancellationToken.None);
 
-        // L'exception d'origine doit fuiter, PAS celle du rollback
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*photo invalide*");
     }

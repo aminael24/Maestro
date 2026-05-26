@@ -29,25 +29,28 @@ public class AuthController : ControllerBase
     private readonly RegisterService _registerService;
     private readonly LocalUserService _localUserService;
     private readonly OidcService _oidcService;
-    private readonly PasswordResetService _passwordResetService;
-    private readonly IWebHostEnvironment _env;
+   private readonly PasswordResetService _passwordResetService;
+private readonly LoginService _loginService;
+private readonly IWebHostEnvironment _env;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(
-        RegisterService registerService,
-        LocalUserService localUserService,
-        OidcService oidcService,
-        PasswordResetService passwordResetService,
-        IWebHostEnvironment env,
-        ILogger<AuthController> logger)
-    {
-        _registerService      = registerService;
-        _localUserService     = localUserService;
-        _oidcService          = oidcService;
-        _passwordResetService = passwordResetService;
-        _env                  = env;
-        _logger               = logger;
-    }
+   public AuthController(
+    RegisterService registerService,
+    LocalUserService localUserService,
+    OidcService oidcService,
+    PasswordResetService passwordResetService,
+    LoginService loginService,
+    IWebHostEnvironment env,
+    ILogger<AuthController> logger)
+{
+    _registerService      = registerService;
+    _localUserService     = localUserService;
+    _oidcService          = oidcService;
+    _passwordResetService = passwordResetService;
+    _loginService         = loginService;
+    _env                  = env;
+    _logger               = logger;
+}
 
     private bool IsProduction => !_env.IsDevelopment();
 
@@ -313,34 +316,62 @@ public class AuthController : ControllerBase
     // ─────────────────────────────────────────────────────────────
     // POST /auth/register
     // ─────────────────────────────────────────────────────────────
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(
-        [FromForm] RegisterRequest request,
-        CancellationToken cancellationToken)
+   [HttpPost("register")]
+public async Task<IActionResult> Register(
+    [FromForm] RegisterRequest request,
+    CancellationToken cancellationToken)
+{
+    if (string.IsNullOrWhiteSpace(request.Username) ||
+        string.IsNullOrWhiteSpace(request.Email)    ||
+        string.IsNullOrWhiteSpace(request.Password) ||
+        string.IsNullOrWhiteSpace(request.FirstName)||
+        string.IsNullOrWhiteSpace(request.LastName))
     {
-        if (string.IsNullOrWhiteSpace(request.Username) ||
-            string.IsNullOrWhiteSpace(request.Email)    ||
-            string.IsNullOrWhiteSpace(request.Password) ||
-            string.IsNullOrWhiteSpace(request.FirstName)||
-            string.IsNullOrWhiteSpace(request.LastName))
+        return BadRequest(new
         {
-            return BadRequest(new
-            {
-                message = "username, email, password, firstName, lastName sont obligatoires"
-            });
-        }
-
-        try
-        {
-            var result = await _registerService.RegisterAsync(request, cancellationToken);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = "Echec création compte", error = ex.Message });
-        }
+            message = "username, email, password, firstName, lastName sont obligatoires"
+        });
     }
 
+    object registerResult;
+    try
+    {
+        registerResult = await _registerService.RegisterAsync(request, cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new { message = "Echec création compte", error = ex.Message });
+    }
+
+    // Auto-login juste après la création → pose les cookies de session
+    // pour que le frontend puisse aller direct au dashboard.
+    try
+    {
+        var tokens = await _loginService.LoginAsync(
+            new LoginRequest { Username = request.Username, Password = request.Password },
+            cancellationToken);
+
+        if (!string.IsNullOrEmpty(tokens.AccessToken))
+        {
+            AuthCookieHelper.SetAccessTokenCookie(
+                Response, tokens.AccessToken, tokens.ExpiresIn, IsProduction);
+
+            if (!string.IsNullOrEmpty(tokens.RefreshToken))
+                AuthCookieHelper.SetRefreshTokenCookie(Response, tokens.RefreshToken, IsProduction);
+
+            if (!string.IsNullOrEmpty(tokens.IdToken))
+                AuthCookieHelper.SetIdTokenCookie(Response, tokens.IdToken, IsProduction);
+        }
+    }
+    catch (Exception ex)
+    {
+        _logger.LogWarning(ex,
+            "[Register] Auto-login échoué pour {Username} — compte créé.",
+            request.Username);
+    }
+
+    return Ok(registerResult);
+}
     // ─────────────────────────────────────────────────────────────
     // POST /auth/forgot-password
     //
