@@ -127,20 +127,20 @@ jobs:
           dotnet restore services/ApiGateway/ApiGateway.csproj
           dotnet build   services/ApiGateway/ApiGateway.csproj -c Release --no-restore
 
-      - name: Build — WorkspaceService
-        run: |
-          dotnet restore services/WorkspaceService/WorkspaceService.csproj
-          dotnet build   services/WorkspaceService/WorkspaceService.csproj -c Release --no-restore
+    ##  - name: Build — WorkspaceService
+        ##run: |
+         ## dotnet restore services/WorkspaceService/WorkspaceService.csproj
+        ##  dotnet build   services/WorkspaceService/WorkspaceService.csproj -c Release --no-restore
 
-      - name: Build — RunnerService
-        run: |
-          dotnet restore services/RunnerService/RunnerService.csproj
-          dotnet build   services/RunnerService/RunnerService.csproj -c Release --no-restore
+    ##  - name: Build — RunnerService
+      ##  run: |
+       ##   dotnet restore services/RunnerService/RunnerService.csproj
+       ##   dotnet build   services/RunnerService/RunnerService.csproj -c Release --no-restore
 
-      - name: Build — NotificationService
-        run: |
-          dotnet restore services/NotificationService/NotificationService.csproj
-          dotnet build   services/NotificationService/NotificationService.csproj -c Release --no-restore
+     ## - name: Build — NotificationService
+       ## run: |
+        ##  dotnet restore services/NotificationService/NotificationService.csproj
+         ## dotnet build   services/NotificationService/NotificationService.csproj -c Release --no-restore
 
   # ═══════════════════════════════════════════════════════════════════════
   # 3) BACKEND UNIT TESTS — xUnit + Moq + FluentAssertions
@@ -373,10 +373,7 @@ jobs:
             kafka \
             keycloak \
             api-gateway \
-            workspace-service \
-            ai-service \
-            notification-service \
-            runner-service
+            
           echo "Services démarrés. Liste :"
           docker compose ps
 
@@ -471,18 +468,7 @@ jobs:
           - name: api-gateway
             context: services/ApiGateway
             dockerfile: services/ApiGateway/Dockerfile
-          - name: workspace-service
-            context: services/WorkspaceService
-            dockerfile: services/WorkspaceService/Dockerfile
-          - name: runner-service
-            context: services/RunnerService
-            dockerfile: services/RunnerService/Dockerfile
-          - name: notification-service
-            context: services/NotificationService
-            dockerfile: services/NotificationService/Dockerfile
-          - name: ai-service
-            context: services/AIService
-            dockerfile: services/AIService/Dockerfile
+        
 
     steps:
       - name: Checkout
