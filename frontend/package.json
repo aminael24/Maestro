@@ -15,6 +15,9 @@
     "cy:open": "cypress open",
     "cy:run": "cypress run"
   },
+  "jest": {
+  "testPathIgnorePatterns": ["/node_modules/", "/cypress/"]
+},
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "@monaco-editor/react": "^4.7.0",
