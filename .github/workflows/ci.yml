@@ -1,0 +1,453 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Maestro — CI/CD Pipeline
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Stack de tests couverte :
+#
+#    Frontend (React) :
+#      - Jest + React Testing Library  → tests unitaires
+#      - Cypress                       → tests fonctionnels E2E
+#
+#    Backend (.NET 8) :
+#      - xUnit + Moq + FluentAssertions    → tests unitaires
+#      - xUnit + WebApplicationFactory     → tests d'intégration
+#
+#    AIService (Python / FastAPI) :
+#      - pytest                        → tests unitaires (quand ajoutés)
+#
+#    Build :
+#      - Compilation .NET de tous les microservices
+#      - Build production du frontend (Vite)
+#      - Build des images Docker (push sur GHCR uniquement sur main)
+#
+#  Déclencheurs :
+#    push sur main /  dev 
+#    pull request vers main / develop
+#    manuel via workflow_dispatch
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main,  dev]
+  pull_request:
+    branches: [main, develop, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.12"
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
+jobs:
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 1) FRONTEND — Tests unitaires Jest + build Vite
+  # ═══════════════════════════════════════════════════════════════════════
+  frontend-unit:
+    name: Frontend · Jest + RTL
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (non-bloquant)
+        run: npm run lint || true
+
+      - name: Tests unitaires Jest
+        run: npx jest --ci --reporters=default --coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-jest-coverage
+          path: frontend/coverage
+          retention-days: 14
+
+      - name: Build production
+        run: npm run build
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 2) BACKEND BUILD — Compilation .NET 8
+  # ═══════════════════════════════════════════════════════════════════════
+  backend-build:
+    name: Backend · Build .NET 8
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore + build — ApiGateway
+        run: |
+          dotnet restore services/ApiGateway/ApiGateway.csproj
+          dotnet build   services/ApiGateway/ApiGateway.csproj -c Release --no-restore
+
+      - name: Restore + build — WorkspaceService
+        run: |
+          dotnet restore services/WorkspaceService/WorkspaceService.csproj
+          dotnet build   services/WorkspaceService/WorkspaceService.csproj -c Release --no-restore
+
+      - name: Restore + build — RunnerService
+        run: |
+          dotnet restore services/RunnerService/RunnerService.csproj
+          dotnet build   services/RunnerService/RunnerService.csproj -c Release --no-restore
+
+      - name: Restore + build — NotificationService
+        run: |
+          dotnet restore services/NotificationService/NotificationService.csproj
+          dotnet build   services/NotificationService/NotificationService.csproj -c Release --no-restore
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 3) BACKEND UNIT TESTS — xUnit + Moq + FluentAssertions
+  # ═══════════════════════════════════════════════════════════════════════
+  backend-unit:
+    name: Backend · xUnit unit tests
+    needs: backend-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: ApiGateway.UnitTests
+        run: |
+          dotnet test tests/ApiGateway.UnitTests/ApiGateway.UnitTests.csproj \
+            -c Release \
+            --logger "trx;LogFileName=apigateway-unit.trx" \
+            --logger "console;verbosity=normal" \
+            --results-directory ./test-results \
+            --collect:"XPlat Code Coverage"
+
+      - name: WorkspaceService.UnitTests
+        run: |
+          dotnet test services/WorkspaceService/tests/UnitTests/UnitTests.csproj \
+            -c Release \
+            --logger "trx;LogFileName=workspace-unit.trx" \
+            --logger "console;verbosity=normal" \
+            --results-directory ./test-results \
+            --collect:"XPlat Code Coverage"
+
+      - name: Upload résultats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-unit-results
+          path: test-results
+          retention-days: 14
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 4) BACKEND INTEGRATION TESTS — xUnit + WebApplicationFactory
+  # ═══════════════════════════════════════════════════════════════════════
+  backend-integration:
+    name: Backend · xUnit integration tests
+    needs: backend-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: ApiGateway.IntegrationTests
+        # WebApplicationFactory monte la pipeline en mémoire (pas besoin
+        # de Docker), avec EF InMemory et SKIP_JWKS_FETCH=1 → autonome.
+        env:
+          SKIP_JWKS_FETCH: "1"
+        run: |
+          dotnet test tests/ApiGateway.IntegrationTests/ApiGateway.IntegrationTests.csproj \
+            -c Release \
+            --logger "trx;LogFileName=apigateway-integration.trx" \
+            --logger "console;verbosity=normal" \
+            --results-directory ./test-results
+
+      - name: WorkspaceService.IntegrationTests
+        run: |
+          dotnet test services/WorkspaceService/tests/IntegrationTests/IntegrationTests.csproj \
+            -c Release \
+            --logger "trx;LogFileName=workspace-integration.trx" \
+            --logger "console;verbosity=normal" \
+            --results-directory ./test-results
+
+      - name: Upload résultats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-integration-results
+          path: test-results
+          retention-days: 14
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 5) PYTHON AISERVICE — pytest (FastAPI)
+  # ═══════════════════════════════════════════════════════════════════════
+  python-tests:
+    name: AIService · pytest
+    runs-on: ubuntu-latest
+    # Pas de tests pytest existants pour l'instant — on ne bloque pas le
+    # pipeline si le dossier tests/ n'existe pas encore. Le job se contente
+    # alors d'installer les deps et de skipper proprement.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: services/AIService/requirements.txt
+
+      - name: Install AIService dependencies
+        working-directory: services/AIService
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run pytest si des tests existent
+        working-directory: services/AIService
+        run: |
+          if find . -type d \( -name tests -o -name test \) \
+              -not -path '*/__pycache__/*' \
+              -not -path '*/.venv/*' \
+              | grep -q .; then
+            echo "Tests pytest trouvés — exécution"
+            pytest -v --tb=short
+          else
+            echo "Aucun dossier tests/ dans AIService — skip"
+            exit 0
+          fi
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 6) CYPRESS E2E — Tests fonctionnels frontend
+  # ═══════════════════════════════════════════════════════════════════════
+  cypress-e2e:
+    name: Frontend · Cypress E2E
+    needs: [frontend-unit, backend-build]
+    runs-on: ubuntu-latest
+    # E2E peut être instable (timing, services en cours de démarrage).
+    # On ne bloque pas le merge sur Cypress mais on remonte les échecs.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Cypress run
+        # cypress-io/github-action démarre Cypress, attend que le frontend
+        # soit prêt (start + wait-on), puis lance les specs.
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          install: false
+          # Démarre le serveur Vite et attend qu'il réponde avant de
+          # lancer les tests Cypress.
+          start: npm run dev
+          wait-on: "http://localhost:5173"
+          wait-on-timeout: 120
+          browser: chrome
+          spec: cypress/e2e/**/*.cy.js
+
+      - name: Upload screenshots si échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots
+          retention-days: 14
+
+      - name: Upload videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: frontend/cypress/videos
+          retention-days: 14
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 7) DOCKER IMAGES — Build (et push sur main) frontend + microservices
+  # ═══════════════════════════════════════════════════════════════════════
+  docker-images:
+    name: Docker · build images
+    needs: [frontend-unit, backend-unit, backend-integration]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: frontend
+            context: frontend
+            dockerfile: frontend/Dockerfile
+          - name: api-gateway
+            context: services/ApiGateway
+            dockerfile: services/ApiGateway/Dockerfile
+          - name: workspace-service
+            context: services/WorkspaceService
+            dockerfile: services/WorkspaceService/Dockerfile
+          - name: runner-service
+            context: services/RunnerService
+            dockerfile: services/RunnerService/Dockerfile
+          - name: notification-service
+            context: services/NotificationService
+            dockerfile: services/NotificationService/Dockerfile
+          - name: ai-service
+            context: services/AIService
+            dockerfile: services/AIService/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR (uniquement sur main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/maestro-${{ matrix.name }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build (et push sur main) — ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 8) RÉSUMÉ — Statut consolidé du pipeline
+  # ═══════════════════════════════════════════════════════════════════════
+  ci-result:
+    name: CI · résumé global
+    if: always()
+    needs:
+      - frontend-unit
+      - backend-build
+      - backend-unit
+      - backend-integration
+      - python-tests
+      - cypress-e2e
+      - docker-images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Statut des jobs
+        run: |
+          echo "MAESTRO CI/CD — résumé"
+          echo "----------------------------------------"
+          echo "Frontend Jest        : ${{ needs.frontend-unit.result }}"
+          echo "Backend build        : ${{ needs.backend-build.result }}"
+          echo "Backend unit tests   : ${{ needs.backend-unit.result }}"
+          echo "Backend integration  : ${{ needs.backend-integration.result }}"
+          echo "AIService pytest     : ${{ needs.python-tests.result }} (non-bloquant)"
+          echo "Cypress E2E          : ${{ needs.cypress-e2e.result }} (non-bloquant)"
+          echo "Docker images        : ${{ needs.docker-images.result }}"
+          echo "----------------------------------------"
+
+          # Jobs bloquants — n'inclut PAS pytest et Cypress (continue-on-error).
+          if [ "${{ needs.frontend-unit.result }}"       != "success" ] || \
+             [ "${{ needs.backend-build.result }}"       != "success" ] || \
+             [ "${{ needs.backend-unit.result }}"        != "success" ] || \
+             [ "${{ needs.backend-integration.result }}" != "success" ] || \
+             [ "${{ needs.docker-images.result }}"       != "success" ]; then
+            echo "::error::Un ou plusieurs jobs bloquants ont échoué."
+            exit 1
+          fi
+          echo "Tous les jobs bloquants ont réussi."
