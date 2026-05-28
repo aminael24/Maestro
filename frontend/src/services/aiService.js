@@ -1,17 +1,24 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = 'http://localhost:8000/api/ai';
+const API_BASE_URL = "http://localhost:8000/api/ai";
 
 const aiService = {
   /**
    * Génère un projet CRUD complet depuis une description
    */
-  generateCode: async (description, language = "Express + React", context = "PostgreSQL") => {
+  // APRÈS
+  generateCode: async (
+    description,
+    language = "Express + React",
+    context = "PostgreSQL",
+    projectType = "fullstack",
+  ) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/generate`, {
         description,
         language,
-        context
+        context,
+        project_type: projectType,
       });
       return response.data;
     } catch (error) {
@@ -27,20 +34,25 @@ const aiService = {
    * @param {string} selectedCode   - Le snippet sélectionné (peut être null)
    * @param {string} selectedFile   - La clé du fichier ciblé (peut être null)
    */
-  chatWithAi: async (message, currentFiles, selectedCode = null, selectedFile = null) => {
+  chatWithAi: async (
+    message,
+    currentFiles,
+    selectedCode = null,
+    selectedFile = null,
+  ) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/chat`, {
         message,
         currentFiles,
         selectedCode,
-        selectedFile
+        selectedFile,
       });
       return response.data;
     } catch (error) {
       console.error("Erreur lors du chat avec l'IA:", error);
       throw error;
     }
-  }
+  },
 };
 
 export default aiService;
