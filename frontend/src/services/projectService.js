@@ -35,4 +35,34 @@ export const projectService = {
       throw err;
     }
   },
+
+  async createProject(projectData) {
+    if (MOCK_MODE) {
+      const newProject = { id: Date.now().toString(), ...projectData, status: 'active' };
+      mockProjects.push(newProject);
+      return newProject;
+    }
+    try {
+      const { data } = await api.post('/api/projects', projectData);
+      return data;
+    } catch (err) {
+      apiUtils.handleError(err);
+      throw err;
+    }
+  },
+
+  async deleteProject(id) {
+    if (MOCK_MODE) {
+      const index = mockProjects.findIndex(p => p.id === String(id));
+      if (index !== -1) mockProjects.splice(index, 1);
+      return true;
+    }
+    try {
+      await api.delete(`/api/projects/${id}`);
+      return true;
+    } catch (err) {
+      apiUtils.handleError(err);
+      throw err;
+    }
+  },
 };

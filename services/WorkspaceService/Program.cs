@@ -21,10 +21,6 @@ builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddSingleton<IKafkaProducer, KafkaProducer>();
 builder.Services.AddAuthorization();
  
-// ── JWT / Keycloak ────────────────────────────────────────────
-// Chargement direct des JWKS depuis l'URL interne (pas de MetadataAddress)
-// car Keycloak expose son URL publique dans le metadata OpenID,
-// ce qui causerait un 404 depuis le container.
 var keycloakInternalIssuer = "http://keycloak:8080/realms/maestro";
 var jwksUri = $"{keycloakInternalIssuer}/protocol/openid-connect/certs";
  
@@ -119,10 +115,25 @@ app.UseAuthorization();
 // PROJETS
 // ════════════════════════════════════════════════════════════════
  
-// GET /internal/projects — liste tous les projets de l'utilisateur
-app.MapGet("/internal/projects", async (IProjectService svc, ILogger<Program> log) =>
+// GET /internal/projects — liste les projets de l'utilisateur connecté
+app.MapGet("/internal/projects", async (
+    IProjectService svc,
+    ILogger<Program> log,
+    HttpContext ctx) =>
 {
-    try { return Results.Ok(await svc.GetAllProjectsAsync()); }
+    try
+    {
+        var keycloakId = ctx.User.FindFirstValue("sub")
+                      ?? ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(keycloakId))
+        {
+            log.LogWarning("GET /internal/projects — keycloakId manquant dans le token.");
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(await svc.GetAllProjectsAsync(keycloakId));
+    }
     catch (Exception ex)
     {
         log.LogError(ex, "Erreur récupération projets");
@@ -158,7 +169,6 @@ app.MapGet("/internal/projects/{id}", async (
     catch (Exception ex)
     {
         log.LogError(ex, "[Kafka] Échec envoi événement projet {ProjectId}", id);
-        // Non bloquant : on retourne quand même le projet
     }
  
     return Results.Ok(project);
@@ -182,14 +192,11 @@ app.MapPost("/internal/projects", async (
             return Results.Unauthorized();
         }
  
-        // Création en DB
         var created = await svc.CreateProjectAsync(request with { KeycloakId = keycloakId });
  
-        // Initialisation du workspace sur disque : /app/projects/{keycloakId}/{projectId}/
         log.LogInformation("[WS] Initialisation workspace projet {ProjectId} ({Type})", created.Id, created.Type);
         await svc.InitializeProjectAsync(created.Id, created.Type);
  
-        // On retourne la version à jour (status = active)
         var updated = await svc.GetProjectByIdAsync(created.Id);
         return Results.Created($"/internal/projects/{created.Id}", updated);
     }
@@ -208,10 +215,9 @@ app.MapDelete("/internal/projects/{id}", async (int id, IProjectService svc) =>
 }).RequireAuthorization();
  
 // ════════════════════════════════════════════════════════════════
-// FICHIERS  — /app/projects/{keycloakId}/{projectId}/
+// FICHIERS
 // ════════════════════════════════════════════════════════════════
  
-// GET /internal/projects/{id}/files — arbre de fichiers
 app.MapGet("/internal/projects/{id}/files", async (int id, IProjectService svc) =>
 {
     try
@@ -225,7 +231,6 @@ app.MapGet("/internal/projects/{id}/files", async (int id, IProjectService svc) 
     }
 }).RequireAuthorization();
  
-// GET /internal/projects/{id}/files/content?path=src/App.jsx — contenu d'un fichier
 app.MapGet("/internal/projects/{id}/files/content", async (
     int id,
     string path,
@@ -244,7 +249,6 @@ app.MapGet("/internal/projects/{id}/files/content", async (
     }
 }).RequireAuthorization();
  
-// PUT /internal/projects/{id}/files/content — sauvegarde un fichier (éditeur ou IA)
 app.MapPut("/internal/projects/{id}/files/content", async (
     int id,
     SaveFileRequest request,
@@ -269,6 +273,5 @@ app.MapPut("/internal/projects/{id}/files/content", async (
  
 app.Run();
  
-// ── DTOs locaux ───────────────────────────────────────────────
 public record SaveFileRequest(string Path, string Content);
 public partial class Program { }
