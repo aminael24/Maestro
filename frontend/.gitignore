@@ -6,7 +6,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+# Cypress
+frontend/cypress/screenshots/
+frontend/cypress/videos/
+frontend/cypress/downloads/
 
+# Test artifacts
+**/TestResults/
+**/coverage/
 node_modules
 dist
 dist-ssr

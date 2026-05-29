@@ -13,7 +13,7 @@ public class LocalUserService
         _dbContext = dbContext;
     }
 
-    public async Task<LocalUser> CreateAsync(
+    public virtual async Task<LocalUser> CreateAsync(
         string keycloakId,
         RegisterRequest request,
         string? profileUrl,
@@ -39,7 +39,7 @@ public class LocalUserService
     /// — on n'a que le sub Keycloak. ProfileUrl reste null tant que
     /// l'utilisateur ne l'a pas complété.
     /// </summary>
-    public async Task<LocalUser> CreateMinimalAsync(
+    public virtual async Task<LocalUser> CreateMinimalAsync(
         string keycloakId,
         string? profileUrl = null,
         CancellationToken cancellationToken = default)
@@ -55,7 +55,7 @@ public class LocalUserService
         return user;
     }
 
-    public async Task<LocalUser?> GetByKeycloakIdAsync(
+    public virtual async Task<LocalUser?> GetByKeycloakIdAsync(
         string keycloakId,
         CancellationToken cancellationToken = default)
     {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { redirectToGatewayLogin } from "../../services/authService";
 import FeaturesSection from "../../components/landing/FeaturesSection";
 import TestimonialsSection from "../../components/landing/TestimonialsSection";
@@ -35,6 +36,160 @@ const INJECTED_STYLES = `
     display: none !important;
   }
 
+  /* ══ Hero "Découvrir" — bannière courte avec scroll vers #features ══ */
+  .m-discover-hero {
+    position: relative;
+    z-index: 5;
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 1.5rem 60px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .m-discover-eyebrow {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: rgba(192, 213, 214, 0.65);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(64, 126, 140, 0.12);
+    border: 1px solid rgba(64, 126, 140, 0.28);
+    border-radius: 100px;
+  }
+  .m-discover-eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #4ade80;
+    animation: mBlink 2s ease-in-out infinite;
+  }
+  .m-discover-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 4.6rem);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    color: #fff;
+    margin: 0 0 1.2rem;
+    max-width: 12ch;
+  }
+  .m-discover-title em {
+    font-style: italic;
+    font-weight: 400;
+    background: linear-gradient(135deg, #c4aa80, #407E8C);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .m-discover-sub {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+    color: rgba(192, 213, 214, 0.7);
+    line-height: 1.65;
+    max-width: 56ch;
+    margin: 0 auto 2.4rem;
+  }
+  .m-discover-actions {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .m-discover-btn-primary {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #041e2a;
+    background: linear-gradient(135deg, #c4aa80, #A58D66);
+    border: none;
+    border-radius: 10px;
+    padding: 0.85rem 1.8rem;
+    cursor: pointer;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.25s ease;
+    box-shadow: 0 4px 18px rgba(165, 141, 102, 0.32);
+  }
+  .m-discover-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(165, 141, 102, 0.55);
+  }
+  .m-discover-btn-primary:active {
+    transform: scale(0.97);
+  }
+  .m-discover-btn-secondary {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--m-aqua);
+    background: transparent;
+    border: 1px solid rgba(192, 213, 214, 0.3);
+    border-radius: 10px;
+    padding: 0.85rem 1.8rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease,
+      transform 0.18s ease;
+  }
+  .m-discover-btn-secondary:hover {
+    border-color: var(--m-aqua);
+    background: rgba(192, 213, 214, 0.07);
+    transform: translateY(-2px);
+  }
+  .m-discover-btn-secondary:active {
+    transform: scale(0.97);
+  }
+  .m-discover-arrow {
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .m-discover-btn-secondary:hover .m-discover-arrow {
+    transform: translateY(3px);
+  }
+  .m-discover-scrollhint {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(192, 213, 214, 0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+  .m-discover-scrollhint::after {
+    content: '';
+    width: 1px;
+    height: 28px;
+    background: linear-gradient(to bottom, rgba(192, 213, 214, 0.5), transparent);
+    animation: scrollHintDrop 1.8s ease-in-out infinite;
+  }
+  @keyframes scrollHintDrop {
+    0% { transform: translateY(-6px); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateY(6px); opacity: 0; }
+  }
+
   /* ══ NAVBAR ══ */
   .m-nav {
     position: fixed;
@@ -45,13 +200,20 @@ const INJECTED_STYLES = `
     align-items: center;
     justify-content: space-between;
     padding: 0 2.5rem;
-    transition: background 0.35s ease, box-shadow 0.35s ease;
+    transition:
+      background 0.35s ease,
+      box-shadow 0.35s ease,
+      height 0.25s ease,
+      border-color 0.35s ease;
+    border-bottom: 1px solid transparent;
   }
   .m-nav.scrolled {
-    background: rgba(4,30,42,0.97);
-    box-shadow: 0 1px 0 rgba(192,213,214,0.12), 0 8px 32px rgba(0,0,0,0.4);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(4, 30, 42, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid rgba(192, 213, 214, 0.08);
+    height: 58px;
   }
   .m-nav.top {
     background: rgba(8,58,79,0.55);
@@ -402,35 +564,35 @@ const INJECTED_STYLES = `
   }
 `;
 
-/* ─── Items FlowingMenu ──────────────────────────────────────────────────── */
+/* ─── Items FlowingMenu — alignés sur la stack Maestro RÉELLE ────────── */
 const flowingMenuItems = [
   {
-    link: "#about",
-    text: "Prompt to Deploy",
+    link: "#features",
+    text: "ApiGateway · OIDC",
     image:
       "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=400&fit=crop",
   },
   {
     link: "#features",
-    text: "Groq · LLaMA 3.1",
+    text: "LLaMA 3.1 · AIService",
     image:
       "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&h=400&fit=crop",
   },
   {
     link: "#features",
-    text: "Docker in Docker",
+    text: "Docker · RunnerService",
     image:
       "https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=600&h=400&fit=crop",
   },
   {
-    link: "#sentinel",
-    text: "Keycloak · OIDC",
+    link: "#about",
+    text: "Keycloak · Cookies HttpOnly",
     image:
       "https://images.unsplash.com/photo-1563986768494-4dee2763ff3f?w=600&h=400&fit=crop",
   },
   {
     link: "#features",
-    text: "Kafka · Microservices",
+    text: "Compose · Microservices .NET",
     image:
       "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop",
   },
@@ -450,6 +612,7 @@ function MaestroLogo({ size = 120 }) {
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 export default function LandingPage() {
+  const navigate = useNavigate();
   const [loggingIn, setLoggingIn] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -477,15 +640,21 @@ export default function LandingPage() {
     redirectToGatewayLogin();
   };
 
+  // Register → page React /auth/register (formulaire local Maestro)
   const handleRegister = (e) => {
     e?.preventDefault();
-    redirectToGatewayLogin(); // TODO: remplacer par la route d'inscription
+    navigate("/auth/register");
   };
 
   const goTo = (id) =>
     document
       .getElementById(id)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const handleDiscover = (e) => {
+    e?.preventDefault();
+    goTo("features");
+  };
 
   const navLinks = [
     { label: "À propos", id: "about" },
@@ -501,8 +670,12 @@ export default function LandingPage() {
       <MeshGradientBackground />
 
       {/* ══ NAVBAR ════════════════════════════════════════ */}
-      <nav className={`m-nav ${scrolled ? "scrolled" : "top"}`}>
-        <a href="/" className="m-logo">
+      <nav
+        className={`m-nav ${scrolled ? "scrolled" : "top"}`}
+        data-testid="landing-navbar"
+        data-scrolled={scrolled ? "true" : "false"}
+      >
+        <a href="/" className="m-logo" data-testid="logo-link">
           <MaestroLogo size={120} />
           <span className="m-logo-text">Maestro</span>
         </a>
@@ -510,7 +683,11 @@ export default function LandingPage() {
         <ul className="m-nav-links">
           {navLinks.map(({ label, id }) => (
             <li key={id}>
-              <button className="m-nav-btn" onClick={() => goTo(id)}>
+              <button
+                className="m-nav-btn"
+                onClick={() => goTo(id)}
+                data-testid={`nav-${id}`}
+              >
                 {label}
               </button>
             </li>
@@ -518,13 +695,18 @@ export default function LandingPage() {
         </ul>
 
         <div className="m-nav-ctas">
-          <button className="m-btn-register" onClick={handleRegister}>
+          <button
+            className="m-btn-register"
+            onClick={handleRegister}
+            data-testid="nav-register-btn"
+          >
             Créer un compte
           </button>
           <button
             className="m-btn-login"
             onClick={handleLogin}
             disabled={loggingIn}
+            data-testid="nav-login-btn"
           >
             {loggingIn ? "Redirection…" : "Se connecter"}
           </button>
@@ -532,6 +714,8 @@ export default function LandingPage() {
       </nav>
 
       {/* ══ SECTIONS ══════════════════════════════════════ */}
+
+      
       <div id="about">
         <Aboutsection />
       </div>

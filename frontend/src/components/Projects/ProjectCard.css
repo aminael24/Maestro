@@ -1,388 +1,310 @@
-/* ========================================
-   PROJECT CARD - ELEGANT DESIGN
-   ======================================== */
+/* ProjectCard.css - Style carte avec statut */
 
 :root {
   --navy: #083A4F;
-  --gold: #A58D66;
-  --gold-light: #C4A572;
+  --teal: #407E8C;
   --aqua: #C0D5D6;
-  --teal: #487E8C;
+  --gold: #A58D66;
   --sand: #E5E1DD;
   --text-dark: #1C2B36;
   --text-mid: #5A7A88;
   --text-light: #9AAFB8;
-  --text-hint: #7A94A0;
-  --font-display: Georgia, serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+/* CARD BASE */
 .project-card {
-  background: #C0D5D6; /* Votre couleur Aqua choisie */
-  border: 0.0625rem solid rgba(8, 58, 79, 0.1);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 0.5rem 1.25rem rgba(8, 58, 79, 0.08);
-  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  position: relative;
+  background: #ffffff;
+  border: 1px solid rgba(64, 126, 140, 0.15);
+  border-radius: 16px;
   overflow: hidden;
-  animation: cardSlideIn 0.5s ease-out both;
-  color: var(--text-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
 }
-
-/* On supprime les variations de couleurs automatiques pour que toutes les cards soient identiques */
-
-@keyframes cardSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(1.5rem) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Stagger animation for multiple cards */
-.project-card:nth-child(1) { animation-delay: 0.05s; }
-.project-card:nth-child(2) { animation-delay: 0.1s; }
-.project-card:nth-child(3) { animation-delay: 0.15s; }
-.project-card:nth-child(4) { animation-delay: 0.2s; }
-.project-card:nth-child(5) { animation-delay: 0.25s; }
-.project-card:nth-child(n+6) { animation-delay: 0.3s; }
 
 .project-card:hover {
-  transform: translateY(-0.5rem);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 1.5rem 3rem rgba(8, 58, 79, 0.15);
-  background: #C8DDE0; /* Un Aqua très légèrement plus clair au survol */
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -8px rgba(8, 58, 79, 0.15);
+  border-color: rgba(64, 126, 140, 0.25);
 }
 
-/* ========================================
-   CARD HEADER
-   ======================================== */
+/* STRIPE COLORÉE */
+.project-card__stripe {
+  height: 4px;
+  flex-shrink: 0;
+}
+.project-card__stripe--Fullstack { background: linear-gradient(90deg, var(--teal), #5a9aaa); }
+.project-card__stripe--Frontend  { background: linear-gradient(90deg, var(--gold), #c9ae82); }
+.project-card__stripe--Backend   { background: linear-gradient(90deg, var(--navy), #0a5a7a); }
+.project-card__stripe--default   { background: linear-gradient(90deg, var(--aqua), #a1c2c4); }
 
-.project-card__header {
+/* BODY */
+.project-card__body {
+  padding: 1rem 1.2rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* TOP ROW */
+.project-card__toprow {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  position: relative;
-  z-index: 1;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* ICON */
-.project-card__icon {
-  width: 3.125rem;
-  height: 3.125rem;
-  background: #ffffff; /* Fond blanc pour l'icône 📁 */
-  border-radius: 0.75rem;
+/* TYPE BADGE */
+.project-card__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.project-card__type--Fullstack {
+  background: rgba(64, 126, 140, 0.12);
+  color: var(--teal);
+}
+.project-card__type--Frontend {
+  background: rgba(165, 141, 102, 0.12);
+  color: var(--gold);
+}
+.project-card__type--Backend {
+  background: rgba(8, 58, 79, 0.1);
+  color: var(--navy);
+}
+.project-card__type--default {
+  background: rgba(192, 213, 214, 0.2);
+  color: var(--teal);
+}
+.project-card__type-icon {
+  font-size: 0.7rem;
+}
+
+/* STATUS BADGE */
+.project-card__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.project-card__status--active {
+  background: #e0f2e9;
+  color: #1a9e6a;
+}
+.project-card__status--in_progress {
+  background: #fef7e0;
+  color: #d4860a;
+}
+.project-card__status--completed {
+  background: #e0f2e9;
+  color: #1a9e6a;
+}
+.project-card__status--pending {
+  background: #f0f0ff;
+  color: #6b5dd3;
+}
+.project-card__status--overdue {
+  background: #fff0f0;
+  color: #d94a4a;
+}
+
+/* ACTIONS */
+.project-card__actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.project-card:hover .project-card__actions {
+  opacity: 1;
+}
+
+.project-card__delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  font-size: 0.8rem;
+  color: var(--text-light);
+  transition: all 0.2s;
 }
-
-.project-card:hover .project-card__icon {
-  background: var(--navy);
-  color: white;
+.project-card__delete:hover {
+  background: rgba(229, 62, 62, 0.1);
+  color: #e53e3e;
 }
 
 /* TITLE */
 .project-card__title {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-dark);
   margin: 0;
-  flex: 1;
-  letter-spacing: -0.015em;
-  line-height: 1.35;
-  transition: color 0.28s ease;
-  word-break: break-word;
+  line-height: 1.4;
 }
 
-.project-card:hover .project-card__title {
-  color: var(--navy);
-}
-
-/* DELETE BUTTON */
-.project-card__delete {
-  background: rgba(255, 255, 255, 0.4); /* Fond blanc translucide pour le ✕ */
-  border: 0.0938rem solid rgba(8, 58, 79, 0.1);
-  border-radius: 0.5rem;
-  color: var(--navy);
-  font-size: 0.875rem;
-  font-weight: 600;
-  width: 2rem;
-  height: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.project-card__delete:hover {
-  background: #ffffff; /* Devient blanc pur au survol */
-  border-color: rgba(163, 32, 32, 0.3);
-  color: #a32020;
-  transform: scale(1.05);
-}
-
-.project-card__delete:hover::before {
-  transform: scale(1);
-  z-index: -1;
-}
-
-.project-card__delete:active {
-  transform: scale(0.98);
-}
-
-/* ========================================
-   DESCRIPTION
-   ======================================== */
-
+/* DESCRIPTION */
 .project-card__description {
-  font-size: 0.8125rem;
-  color: #2D4A58;
-  margin: 0 0 1.25rem;
-  line-height: 1.6;
-  letter-spacing: 0.01em;
-  transition: color 0.28s ease;
+  font-size: 0.78rem;
+  color: var(--text-mid);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.project-card:hover .project-card__description {
-  color: var(--text-dark);
-}
-
-/* ========================================
-   FOOTER
-   ======================================== */
-
-.project-card__footer {
+/* DATE ROW */
+.project-card__date-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 0.625rem;
-  padding-top: 1.25rem;
-  border-top: 0.0625rem solid rgba(255, 255, 255, 0.2); /* Ligne de séparation blanche discrète */
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--gold);
+  font-weight: 500;
+}
+.project-card__date-icon {
   font-size: 0.75rem;
-  position: relative;
-  z-index: 1;
 }
 
-/* DATE */
-.project-card__date {
-  color: var(--navy);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  transition: all 0.28s ease;
-}
-
-/* TYPE BADGE (Fullstack, etc.) */
-.project-card__type-badge {
-  background: #ffffff; /* Fond blanc pour le badge de type */
-  color: var(--navy);
-  display: inline-flex;
+/* FOOTER */
+.project-card__footer {
+  padding: 0.7rem 1.2rem;
+  border-top: 1px solid rgba(64, 126, 140, 0.1);
+  display: flex;
   align-items: center;
-  padding: 0.3125rem 0.875rem;
-  border-radius: 1.25rem;
-  font-size: 0.625rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  background: #fafcfd;
 }
 
-/* ========================================
-   CONFIRM MODAL
-   ======================================== */
+.project-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
 
+.project-card__tag {
+  background: #f1f5f9;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.project-card__tag--docker {
+  background: #e8f4fd;
+  color: #1a73c8;
+}
+
+.project-card__open-btn {
+  background: none;
+  border: 1px solid rgba(64, 126, 140, 0.25);
+  border-radius: 20px;
+  padding: 0.25rem 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--teal);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.project-card__open-btn:hover {
+  background: var(--teal);
+  color: white;
+  border-color: var(--teal);
+}
+
+/* CONFIRM MODAL */
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 28, 38, 0.55);
+  background: rgba(8, 28, 38, 0.5);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.2s ease;
 }
-
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .confirm-box {
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.98) 100%);
-  padding: 2.2rem;
-  border-radius: 18px;
+  background: #ffffff;
+  padding: 1.8rem;
+  border-radius: 20px;
   width: 90%;
-  max-width: 360px;
+  max-width: 340px;
   text-align: center;
-  box-shadow: 0 25px 60px rgba(8, 28, 38, 0.25),
-              0 8px 24px rgba(8, 58, 79, 0.12),
-              inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(8, 58, 79, 0.08);
-  animation: modalBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(8, 28, 38, 0.2);
+  border: 1px solid rgba(8, 58, 79, 0.1);
+  animation: modalBounce 0.3s ease;
 }
-
 @keyframes modalBounce {
-  from {
-    opacity: 0;
-    transform: scale(0.88);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
-
-.confirm-box::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--gold), var(--teal), var(--aqua));
-}
-
 .confirm-box h3 {
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 400;
-  color: var(--navy);
-  margin: 0 0 0.8rem;
-  letter-spacing: -0.01em;
-}
-
-.confirm-box p {
-  font-size: 0.9rem;
-  color: var(--text-mid);
-  margin: 0 0 1.8rem;
-  line-height: 1.6;
-}
-
-.confirm-box strong {
-  color: var(--text-dark);
+  font-size: 1.1rem;
   font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 0.5rem;
 }
-
-/* ========================================
-   CONFIRM ACTIONS
-   ======================================== */
-
+.confirm-box p {
+  font-size: 0.85rem;
+  color: var(--text-mid);
+  margin-bottom: 1.5rem;
+}
 .confirm-actions {
   display: flex;
   gap: 0.8rem;
-  margin-top: 1.5rem;
 }
-
 .confirm-actions button {
   flex: 1;
-  padding: 0.8rem 1rem;
-  border-radius: 10px;
+  padding: 0.6rem;
+  border-radius: 40px;
   border: none;
   cursor: pointer;
-  font-weight: 700;
-  font-size: 12.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  font-weight: 600;
+  font-size: 0.8rem;
+  transition: all 0.2s;
 }
-
-.confirm-actions button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.2);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.28s ease;
-}
-
-.confirm-actions button:hover::before {
-  transform: scaleX(1);
-}
-
 .confirm-actions button:first-child {
-  background: rgba(8, 58, 79, 0.06);
+  background: #f1f5f9;
   color: var(--text-mid);
-  border: 1px solid rgba(8, 58, 79, 0.12);
 }
-
 .confirm-actions button:first-child:hover {
-  background: rgba(8, 58, 79, 0.1);
-  color: var(--text-dark);
+  background: #e2e8f0;
 }
-
 .confirm-actions button.danger {
-  background: linear-gradient(135deg, #d94a4a, #c93636);
+  background: linear-gradient(135deg, #e53e3e, #c93636);
   color: white;
-  box-shadow: 0 4px 14px rgba(217, 74, 74, 0.3);
 }
-
 .confirm-actions button.danger:hover {
-  background: linear-gradient(135deg, #c93636, #b82e2e);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(217, 74, 74, 0.4);
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
 }
-
-.confirm-actions button:active {
-  transform: translateY(0);
-}
-
-/* ========================================
-   RESPONSIVE
-   ======================================== */
 
 @media (max-width: 640px) {
-  .project-card {
-    padding: 1.2rem;
-  }
-
-  .project-card__title {
-    font-size: 1rem;
-  }
-
-  .project-card__icon {
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
-  }
-
-  .confirm-box {
-    padding: 1.8rem 1.5rem;
-  }
-}
-
-/* Ajouter ces règles dans ProjectCard.css
-   juste après .project-card__delete */
- 
-.project-card__edit {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  color: var(--text-mid);
-  padding: 0.25rem 0.4rem;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s;
-  margin-right: 0.25rem;
-  line-height: 1;
-}
- 
-.project-card__edit:hover {
-  background: rgba(72, 126, 140, 0.15); /* teal léger */
-  color: var(--teal);
+  .project-card__body { padding: 0.8rem; }
+  .project-card__footer { padding: 0.6rem 0.8rem; }
 }
