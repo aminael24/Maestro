@@ -1,7 +1,8 @@
-import React from 'react';
-import AiFileTree from '../../components/Sidebar/AiFileTree';
-import CodeEditor from '../../components/Workspace/CodeEditor';
-import ChatBox from '../../components/Workspace/ChatBox';
+import React from "react";
+import AiFileTree from "../../components/Sidebar/AiFileTree";
+import CodeEditor from "../../components/Workspace/CodeEditor";
+import ChatBox from "../../components/Workspace/ChatBox";
+import Terminal from "../../components/Workspace/Terminal";
 import RepoGate from '../../components/repository/RepoGate';
 import RepoTopBar from '../../components/repository/RepoTopBar';
 import { useGitHubStore } from '../../store/gitHubStore';
@@ -55,15 +56,29 @@ const AiEditorPage = () => {
         <CodeEditor />
       </main>
 
-      {/* Chat droit */}
-      <section style={{
-        borderLeft: '1px solid rgba(255,255,255,0.06)',
-        background: '#0d1a24',
-        height: isConnected ? 'calc(100vh - 80px)' : '100vh',
-        overflow: 'hidden',
-        gridColumn: '3',
-        gridRow: isConnected ? '2' : '1',
-      }}>
+      {/* Terminal - ligne 2 milieu */}
+      <div
+        style={{
+          gridColumn: "2",
+          gridRow: "2",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          padding: "8px",
+          background: "#0d1117",
+        }}
+      >
+        <Terminal />
+      </div>
+
+      {/* Chat droit - occupe les 2 lignes */}
+      <section
+        style={{
+          gridColumn: "3",
+          gridRow: "1 / 3",
+          borderLeft: "1px solid rgba(255,255,255,0.06)",
+          background: "#0d1a24",
+          overflow: "hidden",
+        }}
+      >
         <ChatBox />
       </section>
     </div>

@@ -1,43 +1,77 @@
+/* Topbar.css - Style Maestro (navy, teal, aqua, gold, sand) */
+
+:root {
+  --navy: #083A4F;
+  --teal: #407E8C;
+  --aqua: #C0D5D6;
+  --gold: #A58D66;
+  --sand: #E5E1DD;
+  --navy-light: #0a4a65;
+  --teal-light: #5a9aaa;
+}
+
 .topbar {
-  height: 70px;
-  background: #F5EFEB;
-  border-bottom: 1px solid rgba(8, 58, 79, 0.05);
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 0 2.5rem;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(8, 58, 79, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.topbar__left {
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar__title {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  color: var(--navy);
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--navy), var(--teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.topbar__subtitle {
+  font-size: 0.7rem;
+  color: var(--teal);
+  margin: 0;
+}
+
+.topbar__center {
+  flex: 1;
+  max-width: 350px;
+  min-width: 200px;
 }
 
 .topbar__search {
   position: relative;
-  width: 400px;
 }
 
 .topbar__search input {
   width: 100%;
-  padding: 0.6rem 1rem 0.6rem 2.5rem;
-  border: 1px solid rgba(8, 58, 79, 0.08);
-  border-radius: 12px;
-  background: #f8f9fa;
+  padding: 0.6rem 1rem 0.6rem 2.3rem;
+  border: 1px solid var(--aqua);
+  border-radius: 40px;
+  background: #ffffff;
   font-size: 0.85rem;
   outline: none;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  color: var(--navy);
 }
 
 .topbar__search input:focus {
-  background: #ffffff;
   border-color: var(--teal);
-  box-shadow: 0 4px 12px rgba(8, 58, 79, 0.05);
+  box-shadow: 0 0 0 3px rgba(64, 126, 140, 0.15);
 }
 
 .search-icon {
@@ -49,31 +83,89 @@
   opacity: 0.5;
 }
 
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.topbar__filters {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.topbar__filter-select {
+  padding: 0.5rem 2rem 0.5rem 1rem;
+  border: 1px solid var(--aqua);
+  border-radius: 40px;
+  background: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--navy);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23407E8C'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m19 9-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1rem;
+}
+
+.topbar__filter-select:hover {
+  border-color: var(--gold);
+}
+
+/* ============================================
+   BOUTON NOUVEAU PROJET - STYLE MAESTRO
+   Dégradé navy/teal comme le hero
+   ============================================ */
+.topbar__create-btn {
+  background: linear-gradient(135deg, var(--navy), var(--teal));
+  border: none;
+  padding: 0.6rem 1.6rem;
+  border-radius: 48px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(8, 58, 79, 0.25);
+  white-space: nowrap;
+}
+
+.topbar__create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(64, 126, 140, 0.35);
+  background: linear-gradient(135deg, var(--teal), var(--navy-light));
+}
+
+.topbar__create-btn:active {
+  transform: translateY(0);
+}
+
 .topbar__notif {
   background: none;
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
   opacity: 0.6;
-  transition: opacity 0.2s;
+  transition: opacity 0.3s;
+  padding: 0.4rem;
 }
 
-.topbar__notif:hover { opacity: 1; }
-
-.topbar__create-btn {
-  padding: 8px 18px;
-  background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(8, 58, 79, 0.12);
-  cursor: pointer;
-  transition: all 0.2s ease;
+.topbar__notif:hover {
+  opacity: 1;
 }
 
-.topbar__create-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(8, 58, 79, 0.18);
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+  }
+  .topbar__center {
+    max-width: 100%;
+    width: 100%;
+  }
+  .topbar__filters {
+    display: none;
+  }
 }

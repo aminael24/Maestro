@@ -18,7 +18,7 @@ public class RegisterService
         _profileImageService = profileImageService;
     }
 
-    public async Task<object> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
+    public virtual async Task<object> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
         string? keycloakId = null;
 

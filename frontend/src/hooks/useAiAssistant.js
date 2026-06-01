@@ -1,22 +1,27 @@
-import { useState } from 'react';
-import aiService from '../services/aiService';
-import { useAiStore } from '../store/useAiStore';
+import { useState } from "react";
+import aiService from "../services/aiService";
+import { useAiStore } from "../store/useAiStore";
 
 export const useAiAssistant = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const setProjectCode = useAiStore((state) => state.setProjectCode);
-  const updateFile     = useAiStore((state) => state.updateFile);
+  const updateFile = useAiStore((state) => state.updateFile);
 
   /**
    * Génère un projet complet depuis une description
    */
-  const generateNewProject = async (description) => {
+  const generateNewProject = async (description, projectType = "fullstack") => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await aiService.generateCode(description);
+      const data = await aiService.generateCode(
+        description,
+        "Express + React",
+        "PostgreSQL",
+        projectType,
+      );
       setProjectCode(data);
       return data;
     } catch (err) {
@@ -34,7 +39,12 @@ export const useAiAssistant = () => {
    * @param {string} selectedCode  - Le snippet sélectionné (peut être null)
    * @param {string} selectedFile  - La clé du fichier ciblé (peut être null)
    */
-  const askModification = async (message, currentFiles, selectedCode, selectedFile) => {
+  const askModification = async (
+    message,
+    currentFiles,
+    selectedCode,
+    selectedFile,
+  ) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -42,7 +52,7 @@ export const useAiAssistant = () => {
         message,
         currentFiles,
         selectedCode,
-        selectedFile
+        selectedFile,
       );
 
       // Cas 1 : le backend renvoie uniquement le fichier modifié

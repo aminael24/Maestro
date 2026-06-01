@@ -5,8 +5,8 @@ class CodeGenRequest(BaseModel):
     description: str
     language: Optional[str] = None
     context: Optional[str] = None
+    project_type: Optional[str] = "fullstack"  # "frontend", "backend", "fullstack"
 
-# ✅ NOUVEAU
 class ChatRequest(BaseModel):
     message: str
     currentFiles: dict

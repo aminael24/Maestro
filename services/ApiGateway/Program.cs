@@ -70,6 +70,13 @@ var keycloakInternalIssuer = realmUrl ?? keycloakPublicIssuer;
 var jwksUri = $"{keycloakInternalIssuer}/protocol/openid-connect/certs";
 
 Microsoft.IdentityModel.Tokens.JsonWebKeySet? jwks = null;
+
+// Permet aux tests d'intégration (WebApplicationFactory) de bypass le
+// fetch JWKS qui boucle 15× et fait timeout en CI. Quand SKIP_JWKS_FETCH=1
+// on n'essaie même pas — toute requête authentifiée ressortira en 401, ce
+// qui est exactement ce que veulent les tests sur endpoints publics.
+var skipJwksFetch = Environment.GetEnvironmentVariable("SKIP_JWKS_FETCH") == "1";
+if (!skipJwksFetch)
 {
     using var httpClient = new HttpClient();
     var jwksRetries = 15;
@@ -91,10 +98,12 @@ Microsoft.IdentityModel.Tokens.JsonWebKeySet? jwks = null;
     }
     if (jwks == null || jwks.Keys.Count == 0)
     {
-        // On n'arrête pas le service : un health check de keycloak peut
-        // mettre du temps. Mais on log fort pour que ce soit visible.
         Console.WriteLine($"[JWT] ⚠️  JWKS n'a PAS pu être chargé depuis {jwksUri}. Toutes les requêtes auth vont échouer en 401.");
     }
+}
+else
+{
+    Console.WriteLine("[JWT] SKIP_JWKS_FETCH=1 → JWKS skipped (test mode).");
 }
 
 // IMPORTANT: désactive le remapping automatique des claims JWT par .NET.
@@ -155,28 +164,42 @@ builder.Services.AddScoped<ProfileImageService>();
 builder.Services.AddScoped<PasswordResetService>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails(); // Better error formatting
-builder.WebHost.UseWebRoot("wwwroot");
-
+if (Environment.GetEnvironmentVariable("SKIP_JWKS_FETCH") != "1")
+{
+    builder.WebHost.UseWebRoot("wwwroot");
+}
 var app = builder.Build();
 
 // ── Auto-migrate DB on startup ──────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var retries = 10;
-    while (retries > 0)
+    // EF InMemory ne supporte pas Migrate() (utilisé par les tests
+    // d'intégration via WebApplicationFactory). On le détecte et on
+    // utilise EnsureCreated à la place — pour tous les autres providers
+    // (Npgsql en prod), le comportement reste identique avec Migrate().
+    if (db.Database.ProviderName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true)
     {
-        try
+        db.Database.EnsureCreated();
+        app.Logger.LogInformation("✅ InMemory DB ensured (test mode).");
+    }
+    else
+    {
+        var retries = 10;
+        while (retries > 0)
         {
-            db.Database.Migrate();
-            app.Logger.LogInformation("✅ Database migration applied.");
-            break;
-        }
-        catch (Exception ex)
-        {
-            retries--;
-            app.Logger.LogWarning(ex, $"⏳ DB not ready, retrying ({retries} left)...");
-            Thread.Sleep(3000);
+            try
+            {
+                db.Database.Migrate();
+                app.Logger.LogInformation("✅ Database migration applied.");
+                break;
+            }
+            catch (Exception ex)
+            {
+                retries--;
+                app.Logger.LogWarning(ex, $"⏳ DB not ready, retrying ({retries} left)...");
+                Thread.Sleep(3000);
+            }
         }
     }
 }
@@ -562,6 +585,32 @@ app.MapPost("/api/github/repositories", async (HttpContext context, IHttpClientF
     }
 }).RequireAuthorization();
 
+app.MapPut("/api/projects/{id}/files/content", async (string id, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var incomingToken = ExtractBearerToken(context);
+        if (incomingToken is null) return Results.Unauthorized();
+ 
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
+ 
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Put, $"{workspaceServiceUrl}/internal/projects/{id}/files/content");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+ 
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] Workspace Service is down: {ex.Message}");
+        return Results.Problem("Unable to save file content.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
 // ── DEPLOY-SERVICE proxy (with token exchange) ──────────────
 app.MapPost("/api/deploy", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
 {
@@ -621,3 +670,8 @@ static async Task<string?> ExchangeTokenAsync(
     using var doc = JsonDocument.Parse(json);
     return doc.RootElement.TryGetProperty("access_token", out var at) ? at.GetString() : null;
 }
+
+// Expose Program comme classe partielle publique pour permettre aux tests
+// d'intégration (WebApplicationFactory<Program>) de la référencer. Les
+// top-level statements génèrent une classe internal par défaut.
+public partial class Program { }

@@ -5,7 +5,7 @@ namespace ApiGateway.Services;
 
 /// <summary>
 /// OIDC client pour l'ApiGateway, parle à Keycloak en client *confidentiel*.
-/// Le frontend n'est plus impliqué dans l'échange de code et n'a plus
+///
 /// besoin de PKCE — le navigateur suit juste les redirections.
 ///
 /// Lit ces variables d'environnement :
@@ -37,7 +37,7 @@ public class OidcService
     /// login standard et envoie l'utilisateur directement chez le
     /// provider externe.
     /// </param>
-    public string BuildAuthorizationUrl(string state, string? idpHint = null)
+    public virtual string BuildAuthorizationUrl(string state, string? idpHint = null)
     {
         var realmUrl    = RequireEnv("KEYCLOAK_REALM_URL");
         var clientId    = RequireEnv("KEYCLOAK_CLIENT_ID");
@@ -78,7 +78,7 @@ public class OidcService
     /// Échange un code d'autorisation contre des tokens.
     /// Client confidentiel → pas de PKCE.
     /// </summary>
-    public async Task<OidcTokenSet> ExchangeCodeAsync(
+    public virtual async Task<OidcTokenSet> ExchangeCodeAsync(
         string code,
         CancellationToken cancellationToken = default)
     {
@@ -117,7 +117,7 @@ public class OidcService
     /// <summary>
     /// Utilise un refresh_token pour obtenir un nouveau set de tokens.
     /// </summary>
-    public async Task<OidcTokenSet> RefreshTokenAsync(
+    public virtual async Task<OidcTokenSet> RefreshTokenAsync(
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
@@ -155,7 +155,7 @@ public class OidcService
     ///
     /// À appeler avant de clear les cookies maestro_*.
     /// </summary>
-    public async Task RevokeRefreshTokenAsync(
+    public virtual async Task RevokeRefreshTokenAsync(
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
@@ -206,7 +206,7 @@ public class OidcService
     /// navigateur la suit, Keycloak clear ses propres cookies de session
     /// SSO côté navigateur (AUTH_SESSION_ID, KEYCLOAK_IDENTITY).
     /// </summary>
-    public string BuildEndSessionUrl(string? idToken, string postLogoutRedirectUri)
+    public virtual string BuildEndSessionUrl(string? idToken, string postLogoutRedirectUri)
     {
         var realmUrl   = RequireEnv("KEYCLOAK_REALM_URL");
         var endSession = ToBrowserFacingUrl(realmUrl) + "/protocol/openid-connect/logout";
