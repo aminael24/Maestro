@@ -3,45 +3,56 @@ import AiFileTree from "../../components/Sidebar/AiFileTree";
 import CodeEditor from "../../components/Workspace/CodeEditor";
 import ChatBox from "../../components/Workspace/ChatBox";
 import Terminal from "../../components/Workspace/Terminal";
+import RepoGate from '../../components/repository/RepoGate';
+import RepoTopBar from '../../components/repository/RepoTopBar';
+import { useGitHubStore } from '../../store/gitHubStore';
 
 const AiEditorPage = () => {
+  const { isConnected } = useGitHubStore();
+
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "260px 1fr 360px",
-        gridTemplateRows: "1fr 250px",
-        height: "100vh",
-        maxHeight: "100vh",
-        overflow: "hidden",
-        backgroundColor: "#0f1923",
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-      }}
-    >
-      {/* Sidebar gauche - occupe les 2 lignes */}
-      <aside
-        style={{
-          gridColumn: "1",
-          gridRow: "1 / 3",
-          background: "linear-gradient(180deg, #0d1f2d 0%, #0f1923 100%)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-          overflowY: "auto",
-        }}
-      >
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '260px 1fr 360px',
+      gridTemplateRows: isConnected ? 'auto 1fr' : '1fr',
+      height: '100vh',
+      maxHeight: '100vh',
+      overflow: 'hidden',
+      backgroundColor: '#0f1923',
+      fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+    }}>
+      {/* GitHub Gate - shows when not connected */}
+      <RepoGate />
+
+      {/* GitHub Top Bar - shows when connected */}
+      {isConnected && (
+        <div style={{ gridColumn: '1 / -1', zIndex: 10 }}>
+          <RepoTopBar />
+        </div>
+      )}
+
+      {/* Sidebar gauche */}
+      <aside style={{
+        background: 'linear-gradient(180deg, #0d1f2d 0%, #0f1923 100%)',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        overflowY: 'auto',
+        height: isConnected ? 'calc(100vh - 80px)' : '100vh',
+        gridColumn: '1',
+        gridRow: isConnected ? '2' : '1',
+      }}>
         <AiFileTree />
       </aside>
 
-      {/* Éditeur central - ligne 1 */}
-      <main
-        style={{
-          gridColumn: "2",
-          gridRow: "1",
-          display: "flex",
-          flexDirection: "column",
-          background: "#111d27",
-          overflow: "hidden",
-        }}
-      >
+      {/* Éditeur central */}
+      <main style={{
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#111d27',
+        height: isConnected ? 'calc(100vh - 80px)' : '100vh',
+        overflow: 'hidden',
+        gridColumn: '2',
+        gridRow: isConnected ? '2' : '1',
+      }}>
         <CodeEditor />
       </main>
 

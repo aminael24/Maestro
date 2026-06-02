@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using ApiGateway.Data;
 using ApiGateway.Services;
@@ -26,6 +27,7 @@ var userDbPort     = Environment.GetEnvironmentVariable("USER_DB_PORT");
 var userDbName     = Environment.GetEnvironmentVariable("USER_DB_DATABASE");
 var userDbUsername  = Environment.GetEnvironmentVariable("USER_DB_USERNAME");
 var userDbPassword  = Environment.GetEnvironmentVariable("USER_DB_PASSWORD_LOCAL");
+var gitHubServiceUrl = Environment.GetEnvironmentVariable("GITHUB_SERVICE_URL") ?? "http://github-service:8080";
 
 var connectionString =
     $"Host={userDbHost};Port={userDbPort};Database={userDbName};Username={userDbUsername};Password={userDbPassword}";
@@ -422,6 +424,165 @@ app.MapGet("/api/projects/{id}/files/content", async (string id, string path, Ht
     catch (Exception)
     {
         return Results.Problem("Unable to read file content.", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+// ── GITHUB SERVICE proxy ─────────────────────────────────
+app.MapGet("/api/github/providers", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{gitHubServiceUrl}/api/providers");
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/github/providers/{provider}/auth-url", async (string provider, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        var target = $"{gitHubServiceUrl}/api/providers/{provider}/auth-url" + context.Request.QueryString;
+        var request = new HttpRequestMessage(HttpMethod.Get, target);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/github/providers/{provider}/token", async (string provider, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{gitHubServiceUrl}/api/providers/{provider}/token")
+        {
+            Content = new StringContent(body, Encoding.UTF8, context.Request.ContentType ?? "application/json")
+        };
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/github/providers/{provider}/repositories", async (string provider, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{gitHubServiceUrl}/api/providers/{provider}/repositories")
+        {
+            Content = new StringContent(body, Encoding.UTF8, context.Request.ContentType ?? "application/json")
+        };
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/github/providers/{provider}/repositories/{owner}/{repoName}", async (string provider, string owner, string repoName, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        var target = $"{gitHubServiceUrl}/api/providers/{provider}/repositories/{Uri.EscapeDataString(owner)}/{Uri.EscapeDataString(repoName)}" + context.Request.QueryString;
+        var request = new HttpRequestMessage(HttpMethod.Get, target);
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/github/repositories", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{gitHubServiceUrl}/api/repositories");
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/github/repositories/{projectId}", async (string projectId, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{gitHubServiceUrl}/api/repositories/{projectId}");
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/github/repositories", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{gitHubServiceUrl}/api/repositories")
+        {
+            Content = new StringContent(body, Encoding.UTF8, context.Request.ContentType ?? "application/json")
+        };
+
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service is down: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
     }
 }).RequireAuthorization();
 

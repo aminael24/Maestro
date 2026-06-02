@@ -3,16 +3,43 @@ namespace RunnerService.Services;
 public class DockerService
 {
     private readonly ILogger<DockerService> _logger;
-    private static int _nextBackendPort = 3001;
-    private static int _nextFrontendPort = 5174;
+
+    // Plage de ports : backend 3001-3099, frontend 5174-5272
+    private static readonly SemaphoreSlim _portLock     = new(1, 1);
+    private static readonly HashSet<int>   _usedBackend  = new();
+    private static readonly HashSet<int>   _usedFrontend = new();
 
     public DockerService(ILogger<DockerService> logger)
     {
         _logger = logger;
     }
 
+    // ── Allocation de ports libres ─────────────────────────────────────────
+    private static async Task<int> AllocatePort(HashSet<int> used, int start, int end)
+    {
+        await _portLock.WaitAsync();
+        try
+        {
+            for (int p = start; p <= end; p++)
+            {
+                if (!used.Contains(p)) { used.Add(p); return p; }
+            }
+            throw new InvalidOperationException($"Aucun port disponible entre {start} et {end}.");
+        }
+        finally { _portLock.Release(); }
+    }
+
+    private static async Task ReleasePort(HashSet<int> used, int port)
+    {
+        await _portLock.WaitAsync();
+        try { used.Remove(port); }
+        finally { _portLock.Release(); }
+    }
+
+    // ── Point d'entrée principal ───────────────────────────────────────────
     public async Task<(string backendUrl, string frontendUrl)> RunProjectAsync(
         string projectId,
+        string projectType,
         string sql,
         string model,
         string controller,
@@ -21,22 +48,112 @@ public class DockerService
         Func<string, Task> onLog,
         CancellationToken cancellationToken = default)
     {
-        var projectDir    = Path.Combine("/app/projects", projectId);
-        var frontendDir   = Path.Combine(projectDir, "frontend");
+        var type = (projectType ?? "fullstack").ToLower();
+
+        bool hasBackend  = type is "backend"  or "fullstack";
+        bool hasFrontend = type is "frontend" or "fullstack";
+
+        // Nettoyage préventif des conteneurs existants pour ce projectId
+        await CleanupProject(projectId, hasBackend, hasFrontend, onLog, cancellationToken);
+
+        var projectDir     = Path.Combine("/app/projects", projectId);
+        var frontendDir    = Path.Combine(projectDir, "frontend");
         var frontendSrcDir = Path.Combine(frontendDir, "src");
 
         Directory.CreateDirectory(projectDir);
-        Directory.CreateDirectory(frontendSrcDir);
+        if (hasFrontend)
+            Directory.CreateDirectory(frontendSrcDir);
 
         await onLog("📁 Dossier projet créé...");
 
-        // ── Fichiers backend ──────────────────────────────────────────
+        // Alloue seulement les ports nécessaires
+        int backendPort  = hasBackend  ? await AllocatePort(_usedBackend,  3001, 3099) : 0;
+        int frontendPort = hasFrontend ? await AllocatePort(_usedFrontend, 5174, 5272) : 0;
+
+        string backendUrl  = "";
+        string frontendUrl = "";
+
+        try
+        {
+            // ── Fichiers backend ───────────────────────────────────────────
+            if (hasBackend)
+            {
+                await WriteBackendFiles(projectDir, model, controller, routes, sql, backendPort);
+                await onLog("📝 Fichiers backend écrits...");
+            }
+
+            // ── Fichiers frontend ──────────────────────────────────────────
+            if (hasFrontend)
+            {
+                var apiUrl = hasBackend
+                    ? $"http://localhost:{backendPort}"
+                    : "http://localhost:3001"; // backend fictif pour mode frontend seul
+
+                await WriteFrontendFiles(frontendDir, frontendSrcDir, frontend, frontendPort, apiUrl);
+                await onLog("📝 Fichiers frontend écrits...");
+            }
+
+            await onLog("📝 Tous les fichiers écrits...");
+
+            // ── PostgreSQL + Backend Node.js ───────────────────────────────
+            if (hasBackend)
+            {
+                backendUrl = await StartBackend(projectId, projectDir, backendPort, onLog, cancellationToken);
+            }
+
+            // ── Frontend Vite/React ────────────────────────────────────────
+            if (hasFrontend)
+            {
+                frontendUrl = await StartFrontend(projectId, frontendDir, frontendPort, onLog, cancellationToken);
+            }
+
+            await onLog("✅ Projet lancé avec succès !");
+            return (backendUrl, frontendUrl);
+        }
+        catch
+        {
+            // En cas d'erreur, libère les ports alloués
+            if (hasBackend  && backendPort  > 0) await ReleasePort(_usedBackend,  backendPort);
+            if (hasFrontend && frontendPort > 0) await ReleasePort(_usedFrontend, frontendPort);
+            throw;
+        }
+    }
+
+    // ── Nettoyage des conteneurs existants ────────────────────────────────
+    private async Task CleanupProject(
+        string projectId,
+        bool hasBackend,
+        bool hasFrontend,
+        Func<string, Task> onLog,
+        CancellationToken cancellationToken)
+    {
+        var containers = new List<string>();
+        if (hasBackend)
+        {
+            containers.Add($"backend-{projectId}");
+            containers.Add($"postgres-{projectId}");
+        }
+        if (hasFrontend)
+            containers.Add($"frontend-{projectId}");
+
+        foreach (var name in containers)
+        {
+            await RunDockerCommand($"rm -f {name}", onLog, cancellationToken);
+        }
+    }
+
+    // ── Écriture des fichiers backend ─────────────────────────────────────
+    private async Task WriteBackendFiles(
+        string projectDir,
+        string model, string controller, string routes, string sql,
+        int backendPort)
+    {
         await File.WriteAllTextAsync(Path.Combine(projectDir, "model.js"),      model);
         await File.WriteAllTextAsync(Path.Combine(projectDir, "controller.js"), controller);
         await File.WriteAllTextAsync(Path.Combine(projectDir, "routes.js"),     routes);
         await File.WriteAllTextAsync(Path.Combine(projectDir, "schema.sql"),    sql);
 
-        var backendPackageJson = """
+        var packageJson = """
 {
     "name": "maestro-backend",
     "version": "1.0.0",
@@ -48,10 +165,7 @@ public class DockerService
     }
 }
 """;
-        await File.WriteAllTextAsync(Path.Combine(projectDir, "package.json"), backendPackageJson);
-
-        int backendPort  = _nextBackendPort++;
-        int frontendPort = _nextFrontendPort++;
+        await File.WriteAllTextAsync(Path.Combine(projectDir, "package.json"), packageJson);
 
         var indexJs = $"""
 const express = require('express');
@@ -64,27 +178,35 @@ app.use('/api', router);
 app.listen({backendPort}, () => console.log('Backend running on port {backendPort}'));
 """;
         await File.WriteAllTextAsync(Path.Combine(projectDir, "index.js"), indexJs);
-
-        // ── Fichiers frontend ─────────────────────────────────────────
-        await File.WriteAllTextAsync(Path.Combine(frontendSrcDir, "App.jsx"), frontend);
-
-       var frontendPackageJson = """
-{
-    "name": "maestro-frontend",
-    "version": "1.0.0",
-    "scripts": { "dev": "vite --host 0.0.0.0 --port FRONTEND_PORT" },
-    "dependencies": {
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "axios": "^1.4.0"
-    },
-    "devDependencies": {
-        "vite": "^4.4.0",
-        "@vitejs/plugin-react": "^4.0.0"
     }
-}
-""".Replace("FRONTEND_PORT", frontendPort.ToString());
-        await File.WriteAllTextAsync(Path.Combine(frontendDir, "package.json"), frontendPackageJson);
+
+    // ── Écriture des fichiers frontend ────────────────────────────────────
+    private async Task WriteFrontendFiles(
+        string frontendDir, string frontendSrcDir,
+        string frontend,
+        int frontendPort,
+        string apiUrl)
+    {
+        await File.WriteAllTextAsync(Path.Combine(frontendSrcDir, "App.jsx"), frontend);
+        await File.WriteAllTextAsync(Path.Combine(frontendSrcDir, "App.css"), "/* styles */");
+
+
+var packageJson =
+    "{\n" +
+    "  \"name\": \"maestro-frontend\",\n" +
+    "  \"version\": \"1.0.0\",\n" +
+    $"  \"scripts\": {{ \"dev\": \"vite --host 0.0.0.0 --port {frontendPort}\" }},\n" +
+    "  \"dependencies\": {\n" +
+    "    \"react\": \"^18.2.0\",\n" +
+    "    \"react-dom\": \"^18.2.0\",\n" +
+    "    \"axios\": \"^1.4.0\"\n" +
+    "  },\n" +
+    "  \"devDependencies\": {\n" +
+    "    \"vite\": \"^4.4.0\",\n" +
+    "    \"@vitejs/plugin-react\": \"^4.0.0\"\n" +
+    "  }\n" +
+    "}";
+        await File.WriteAllTextAsync(Path.Combine(frontendDir, "package.json"), packageJson);
 
         var indexHtml = """
 <!DOCTYPE html>
@@ -158,7 +280,6 @@ app.listen({backendPort}, () => console.log('Backend running on port {backendPor
       </div>
       <div class="generated-subtitle">
         Cette interface a été automatiquement générée par Maestro AI.
-        Le contenu dynamique de l'application est injecté automatiquement via React.
       </div>
       <div id="root"></div>
     </section>
@@ -178,25 +299,31 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 """;
         await File.WriteAllTextAsync(Path.Combine(frontendSrcDir, "main.jsx"), mainJsx);
 
-var viteConfig =
-    "import { defineConfig } from 'vite';\n" +
-    "import react from '@vitejs/plugin-react';\n" +
-    "export default defineConfig({\n" +
-    "  plugins: [react()],\n" +
-    "  server: {\n" +
-    $"    host: '0.0.0.0',\n" +
-    $"    port: {frontendPort},\n" +
-    "  },\n" +
-    "  define: {\n" +
-    $"    'import.meta.env.VITE_API_URL': JSON.stringify('http://localhost:{backendPort}')\n" +
-    "  }\n" +
-    "});\n";
+        var viteConfig =
+            "import { defineConfig } from 'vite';\n" +
+            "import react from '@vitejs/plugin-react';\n" +
+            "export default defineConfig({\n" +
+            "  plugins: [react()],\n" +
+            "  server: {\n" +
+            $"    host: '0.0.0.0',\n" +
+            $"    port: {frontendPort},\n" +
+            "  },\n" +
+            "  define: {\n" +
+            $"    'import.meta.env.VITE_API_URL': JSON.stringify('{apiUrl}')\n" +
+            "  }\n" +
+            "});\n";
 
         await File.WriteAllTextAsync(Path.Combine(frontendDir, "vite.config.js"), viteConfig);
+    }
 
-        await onLog("📝 Fichiers écrits...");
-
-        // ── PostgreSQL ────────────────────────────────────────────────
+    // ── Lancement backend (Postgres + Node) ───────────────────────────────
+    private async Task<string> StartBackend(
+        string projectId,
+        string projectDir,
+        int backendPort,
+        Func<string, Task> onLog,
+        CancellationToken cancellationToken)
+    {
         await onLog("🐳 Lancement PostgreSQL...");
         await RunDockerCommand(
             $"run -d --name postgres-{projectId} " +
@@ -213,12 +340,12 @@ var viteConfig =
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "docker",
-                    Arguments = $"exec postgres-{projectId} pg_isready -U admin -d maestro_project",
+                    FileName               = "docker",
+                    Arguments              = $"exec postgres-{projectId} pg_isready -U admin -d maestro_project",
                     RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true,
                 }
             };
             check.Start();
@@ -227,11 +354,10 @@ var viteConfig =
             await Task.Delay(2000, cancellationToken);
         }
 
-        await RunDockerCommand($"cp {projectDir}/schema.sql postgres-{projectId}:/schema.sql", onLog, cancellationToken);
+        await RunDockerCommand($"cp {projectDir}/schema.sql postgres-{projectId}:/schema.sql",             onLog, cancellationToken);
         await RunDockerCommand($"exec postgres-{projectId} psql -U admin -d maestro_project -f /schema.sql", onLog, cancellationToken);
 
-        // ── Backend ───────────────────────────────────────────────────
-        await onLog("🚀 Lancement du backend...");
+        await onLog("🚀 Lancement du backend Node.js...");
         await RunDockerCommand(
             $"run -d --name backend-{projectId} " +
             $"--link postgres-{projectId}:postgres-{projectId} " +
@@ -256,8 +382,20 @@ var viteConfig =
             $"exec -d backend-{projectId} sh -c \"npm install && node index.js\"",
             onLog, cancellationToken);
 
-        // ── Frontend ──────────────────────────────────────────────────
-        await onLog("🌐 Lancement du frontend...");
+        var url = $"http://localhost:{backendPort}";
+        await onLog($"✅ Backend disponible sur {url}");
+        return url;
+    }
+
+    // ── Lancement frontend (Vite/React) ───────────────────────────────────
+    private async Task<string> StartFrontend(
+        string projectId,
+        string frontendDir,
+        int frontendPort,
+        Func<string, Task> onLog,
+        CancellationToken cancellationToken)
+    {
+        await onLog("🌐 Lancement du frontend Vite...");
         await RunDockerCommand(
             $"run -d --name frontend-{projectId} " +
             $"-p {frontendPort}:{frontendPort} " +
@@ -277,16 +415,12 @@ var viteConfig =
         await onLog("⏳ Attente compilation Vite...");
         await Task.Delay(15000, cancellationToken);
 
-        var backendUrl  = $"http://localhost:{backendPort}";
-        var frontendUrl = $"http://localhost:{frontendPort}";
-
-        await onLog($"✅ Backend disponible sur {backendUrl}");
-        await onLog($"✅ Frontend disponible sur {frontendUrl}");
-        await onLog("✅ Projet lancé avec succès !");
-
-        return (backendUrl, frontendUrl);
+        var url = $"http://localhost:{frontendPort}";
+        await onLog($"✅ Frontend disponible sur {url}");
+        return url;
     }
 
+    // ── Exécution commande Docker ─────────────────────────────────────────
     private async Task RunDockerCommand(
         string arguments,
         Func<string, Task> onLog,
@@ -296,12 +430,12 @@ var viteConfig =
         {
             StartInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "docker",
-                Arguments = arguments,
+                FileName               = "docker",
+                Arguments              = arguments,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
+                RedirectStandardError  = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true,
             }
         };
 
