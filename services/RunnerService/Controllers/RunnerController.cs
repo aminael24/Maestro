@@ -15,13 +15,13 @@ public class RunnerController : ControllerBase
     public RunnerController(DockerService dockerService, ILogger<RunnerController> logger)
     {
         _dockerService = dockerService;
-        _logger = logger;
+        _logger        = logger;
     }
 
     [HttpOptions("run")]
     public IActionResult PreflightRun()
     {
-        Response.Headers["Access-Control-Allow-Origin"] = "*";
+        Response.Headers["Access-Control-Allow-Origin"]  = "*";
         Response.Headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
         Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
         return Ok();
@@ -30,14 +30,14 @@ public class RunnerController : ControllerBase
     [HttpPost("run")]
     public async Task Run([FromBody] RunRequest request, CancellationToken cancellationToken)
     {
-        Response.Headers["Content-Type"] = "text/event-stream";
-        Response.Headers["Cache-Control"] = "no-cache";
-        Response.Headers["Connection"] = "keep-alive";
-        Response.Headers["Access-Control-Allow-Origin"] = "*";
+        Response.Headers["Content-Type"]                 = "text/event-stream";
+        Response.Headers["Cache-Control"]                = "no-cache";
+        Response.Headers["Connection"]                   = "keep-alive";
+        Response.Headers["Access-Control-Allow-Origin"]  = "*";
 
         async Task SendLog(string message)
         {
-            var data = $"data: {message}\n\n";
+            var data  = $"data: {message}\n\n";
             var bytes = Encoding.UTF8.GetBytes(data);
             await Response.Body.WriteAsync(bytes, cancellationToken);
             await Response.Body.FlushAsync(cancellationToken);
@@ -47,6 +47,7 @@ public class RunnerController : ControllerBase
         {
             var (backendUrl, frontendUrl) = await _dockerService.RunProjectAsync(
                 request.ProjectId,
+                request.ProjectType,
                 request.Sql,
                 request.Model,
                 request.Controller,
@@ -55,14 +56,19 @@ public class RunnerController : ControllerBase
                 SendLog,
                 cancellationToken);
 
-            await SendLog($"BACKEND_URL:{backendUrl}");
-            await SendLog($"FRONTEND_URL:{frontendUrl}");
+            // N'envoie que les URLs qui ont été réellement lancées
+            if (!string.IsNullOrEmpty(backendUrl))
+                await SendLog($"BACKEND_URL:{backendUrl}");
+
+            if (!string.IsNullOrEmpty(frontendUrl))
+                await SendLog($"FRONTEND_URL:{frontendUrl}");
+
             await SendLog("DONE");
         }
         catch (Exception ex)
         {
             await SendLog($"ERROR:{ex.Message}");
-            _logger.LogError(ex, "Erreur lors de l'exécution du projet");
+            _logger.LogError(ex, "Erreur lors de l'exécution du projet {ProjectId}", request.ProjectId);
         }
     }
 }

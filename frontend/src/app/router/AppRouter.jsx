@@ -8,6 +8,7 @@ import ProjectWorkspacePage from "../../pages/Workspace/ProjectWorkspacePage";
 import RegisterPage from "../../pages/Auth/RegisterPage";
 import ForgotPasswordPage from "../../pages/Auth/ForgotPasswordPage";
 import AuthCallbackPage from "../../pages/Auth/AuthCallbackPage";
+import GitHubCallbackPage from "../../pages/Auth/GitHubCallbackPage";
 import LandingPage from "../../pages/Landing/LandingPage";
 import { isDevMode, env } from "../../utils/env";
 import { getMe } from "../../services/authService";
@@ -152,6 +153,7 @@ export default function AppRouter() {
             <Route path="/auth/register" element={<Navigate to="/workspace/ai-generator" replace />} />
             <Route path="/auth/forgot-password" element={<Navigate to="/workspace/ai-generator" replace />} />
             <Route path="/auth/callback" element={<Navigate to="/workspace/ai-generator" replace />} />
+            <Route path="/github/callback" element={<Navigate to="/workspace/ai-generator" replace />} />
           </>
         ) : (
           <>
@@ -167,6 +169,7 @@ export default function AppRouter() {
 
             {/* Callback OIDC – le gateway le gère mais on garde une route défensive */}
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/github/callback" element={<GitHubCallbackPage />} />
           </>
         )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAiStore } from "../../store/useAiStore";
 
-const Terminal = ({ projectId }) => {
+const Terminal = ({ projectId, projectType }) => {
   const [logs, setLogs] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [backendUrl, setBackendUrl] = useState(null);
@@ -39,8 +39,15 @@ const Terminal = ({ projectId }) => {
     fetch("http://localhost:6001/api/runner/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // ✅ MODIFIÉ : on envoie projectType + tous les fichiers générés
       body: JSON.stringify({
         projectId: projectId,
+        projectType: (projectType || "fullstack").toLowerCase(),
+        sql: files.sql || "",
+        model: files.model || "",
+        controller: files.controller || "",
+        routes: files.routes || "",
+        frontend: files.frontend || "",
       }),
     })
       .then((response) => {
