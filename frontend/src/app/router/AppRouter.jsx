@@ -11,7 +11,7 @@ import AuthCallbackPage from "../../pages/Auth/AuthCallbackPage";
 import LandingPage from "../../pages/Landing/LandingPage";
 import { isDevMode, env } from "../../utils/env";
 import { getMe } from "../../services/authService";
-
+import DeploymentsPage from "../../components/Workspace/DeploymentsPage";
 // ═══════════════════════════════════════════════════════════════
 //  WorkspacePage – wrapper du layout principal pour les routes
 //                  protégées /workspace/*
@@ -184,6 +184,8 @@ export default function AppRouter() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="ai-generator" element={<AiEditorPage />} />
           <Route path="projects/:projectId" element={<ProjectWorkspacePage />} />
+          <Route path="/workspace/deployments" element={<DeploymentsPage />} />
+
         </Route>
 
         {/* Catch-all : tout chemin inconnu retourne sur la landing. */}

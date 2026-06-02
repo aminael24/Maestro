@@ -1,5 +1,16 @@
 services:
   # ── Notification Service ──────────────────────────────────────────
+  deployment-service:
+    build:
+      context: ./services/DeploymentService
+      dockerfile: Dockerfile
+    container_name: deployment-service
+    restart: always
+    environment:
+      - KEYCLOAK_REALM_URL=http://keycloak:8080/realms/maestro
+    networks:
+      - maestro-net
+  # ── Notification Service ──────────────────────────────────────────
   notification-service:
     build:
       context: ./services/NotificationService
