@@ -1,6 +1,6 @@
 import { api, apiUtils } from './api';
 
-const GITHUB_PREFIX = '/github';
+const GITHUB_PREFIX = '/api/github';
 
 export async function getAuthorizationUrl(provider, redirectUri, state) {
   try {

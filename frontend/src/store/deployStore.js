@@ -7,28 +7,28 @@ export const useDeployStore = create((set, get) => ({
   serviceId: null,
   status: 'idle', // idle | deploying | live | failed
   error: null,
+  notifications: [],
 
-  deploy: async ({ repoUrl, branch, serviceName, renderApiKey, buildCommand, startCommand }) => {
+  deploy: async ({ repoUrl, branch, serviceName, railwayToken, buildCommand, startCommand, userId }) => {
     set({ isDeploying: true, error: null, status: 'deploying', deployedUrl: null });
     try {
-      const result = await deployProject({ repoUrl, branch, serviceName, renderApiKey, buildCommand, startCommand });
+      const result = await deployProject({ repoUrl, branch, serviceName, railwayToken, buildCommand, startCommand, userId });
       set({ serviceId: result.serviceId, deployedUrl: result.serviceUrl, isDeploying: false, status: 'deploying' });
-      get().pollStatus(result.serviceId, renderApiKey);
+      get().pollStatus(result.serviceId, railwayToken);
     } catch (err) {
-      set({ isDeploying: false, status: 'failed', error: err.message });
+      set({ isDeploying: false, status: 'failed', error: err.response?.data?.error ?? err.message });
     }
   },
 
-  pollStatus: (serviceId, renderApiKey) => {
+  pollStatus: (serviceId, railwayToken) => {
     const interval = setInterval(async () => {
       try {
-        const status = await getDeployStatus(serviceId, renderApiKey);
-        // Render statuses: build_in_progress, update_in_progress, live, deactivated, build_failed
-        if (status === 'live') {
-          set({ status: 'live' });
+        const { status, url } = await getDeployStatus(serviceId, railwayToken);
+        if (status === 'success') {
+          set({ status: 'live', deployedUrl: url ?? get().deployedUrl });
           clearInterval(interval);
-        } else if (status === 'build_failed' || status === 'deactivated') {
-          set({ status: 'failed', error: `Render: ${status}` });
+        } else if (status === 'failed' || status === 'crashed') {
+          set({ status: 'failed', error: `Railway: ${status}` });
           clearInterval(interval);
         }
       } catch {
@@ -36,6 +36,10 @@ export const useDeployStore = create((set, get) => ({
       }
     }, 8000);
   },
+
+  addNotification: (msg) => set(s => ({ notifications: [msg, ...s.notifications].slice(0, 20) })),
+  setStatus: (status) => set({ status }),
+  setDeployedUrl: (url) => set({ deployedUrl: url }),
 
   reset: () => set({ isDeploying: false, deployedUrl: null, serviceId: null, status: 'idle', error: null }),
 }));

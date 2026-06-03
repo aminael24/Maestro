@@ -91,9 +91,9 @@ export const useGitHubStore = create((set, get) => ({
         throw new Error('GitHub did not return an access token.');
       }
 
-      set({ accessToken: tokenResponse.accessToken, isConnected: true, isLoading: false });
+      set({ accessToken: tokenResponse.accessToken, isConnected: true, isLoading: false , repositories: [] });
       sessionStorage.removeItem('github_oauth_state');
-      await get().fetchRepositories();
+
     } catch (error) {
       set({ isLoading: false, error: error instanceof Error ? error.message : String(error) });
       throw error;
@@ -113,23 +113,27 @@ export const useGitHubStore = create((set, get) => ({
     });
   },
 
-  fetchRepositories: async () => {
-    set({ isLoading: true, error: null });
-    if (isDevMode) {
-      await get().mockFetchRepositories();
-      return;
-    }
+ fetchRepositories: async () => {
+  set({ isLoading: true, error: null });
 
-    try {
-      const repositories = await gitHubApi.getSavedRepositories();
-      set({
-        repositories: (repositories || []).map(normalizeRepository),
-        isLoading: false,
-      });
-    } catch (error) {
-      set({ isLoading: false, error: error instanceof Error ? error.message : String(error) });
-    }
-  },
+  try {
+    const repositories = await gitHubApi.getSavedRepositories();
+
+    set({
+      repositories: Array.isArray(repositories)
+        ? repositories.map(normalizeRepository)
+        : [],
+      isLoading: false,
+      error: null,
+    });
+  } catch (error) {
+    set({
+      repositories: [],
+      isLoading: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+},
 
   selectRepository: (repo) => {
     set({ selectedRepository: repo, currentBranch: 'main', syncStatus: 'idle' });

@@ -1,15 +1,22 @@
 services:
   # ── Notification Service ──────────────────────────────────────────
   deployment-service:
-    build:
-      context: ./services/DeploymentService
-      dockerfile: Dockerfile
-    container_name: deployment-service
-    restart: always
-    environment:
-      - KEYCLOAK_REALM_URL=http://keycloak:8080/realms/maestro
-    networks:
-      - maestro-net
+      build:
+        context: ./services/DeploymentService
+        dockerfile: Dockerfile
+      container_name: deployment-service
+      restart: always
+      environment:
+        - KEYCLOAK_REALM_URL=http://keycloak:8080/realms/maestro
+        - RAILWAY_CLIENT_ID=${RAILWAY_CLIENT_ID}
+        - RAILWAY_CLIENT_SECRET=${RAILWAY_CLIENT_SECRET}
+        - FRONTEND_URL=${FRONTEND_URL}
+        - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      depends_on:
+        kafka:
+          condition: service_healthy
+      networks:
+        - maestro-net
   # ── Notification Service ──────────────────────────────────────────
   notification-service:
     build:
@@ -176,7 +183,9 @@ services:
       ASPNETCORE_URLS: http://+:8080
 
       KAFKA_BROKER: kafka:9092
-
+      RAILWAY_CLIENT_ID: ${RAILWAY_CLIENT_ID}
+      RAILWAY_CLIENT_SECRET: ${RAILWAY_CLIENT_SECRET}
+      DEPLOY_SERVICE_URL: http://deployment-service:8080
       KEYCLOAK_REALM_URL: ${KEYCLOAK_REALM_URL}
       KEYCLOAK_TOKEN_ENDPOINT: ${KEYCLOAK_TOKEN_ENDPOINT}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
@@ -194,7 +203,6 @@ services:
       KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
       GATEWAY_PUBLIC_URL: ${GATEWAY_PUBLIC_URL}
       FRONTEND_URL: ${FRONTEND_URL}
-
       USER_DB_HOST: ${USER_DB_HOST}
       USER_DB_PORT: ${USER_DB_PORT}
       USER_DB_DATABASE: ${USER_DB_DATABASE}
@@ -311,6 +319,8 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_URLS: http://+:8080
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       DATABASE_URL: Host=github-db;Port=5432;Database=github_db;Username=admin;Password=admin_password
     ports:
       - "5101:8080"
@@ -408,6 +418,8 @@ services:
       VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
       VITE_FRONTEND_URL: ${VITE_FRONTEND_URL}
       VITE_API_GATEWAY_URL: ${VITE_API_GATEWAY_URL}
+      VITE_RAILWAY_CLIENT_ID: ${VITE_RAILWAY_CLIENT_ID}
+
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
       - api-gateway

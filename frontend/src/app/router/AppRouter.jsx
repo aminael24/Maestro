@@ -13,6 +13,8 @@ import LandingPage from "../../pages/Landing/LandingPage";
 import { isDevMode, env } from "../../utils/env";
 import { getMe } from "../../services/authService";
 import DeploymentsPage from "../../components/Workspace/DeploymentsPage";
+import RailwayCallbackPage from '../../pages/Auth/RailwayCallbackPage';
+
 // ═══════════════════════════════════════════════════════════════
 //  WorkspacePage – wrapper du layout principal pour les routes
 //                  protégées /workspace/*
@@ -170,6 +172,8 @@ export default function AppRouter() {
             {/* Callback OIDC – le gateway le gère mais on garde une route défensive */}
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/github/callback" element={<GitHubCallbackPage />} />
+            <Route path="/railway/callback" element={<RailwayCallbackPage />} />
+
           </>
         )}
 
@@ -187,8 +191,7 @@ export default function AppRouter() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="ai-generator" element={<AiEditorPage />} />
           <Route path="projects/:projectId" element={<ProjectWorkspacePage />} />
-          <Route path="/workspace/deployments" element={<DeploymentsPage />} />
-
+          <Route path="deployments" element={<DeploymentsPage />} />
         </Route>
 
         {/* Catch-all : tout chemin inconnu retourne sur la landing. */}

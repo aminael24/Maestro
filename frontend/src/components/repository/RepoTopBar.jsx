@@ -5,8 +5,10 @@ import RepoSelector from './RepoSelector';
 import CommitModal from './CommitModal';
 import BranchModal from './BranchModal';
 import CreateRepositoryModal from './CreateRepositoryModal';
+import { useNavigate } from 'react-router-dom';
 
 const RepoTopBar = () => {
+  const navigate = useNavigate(); // ✅ moved inside the component
   const {
     selectedRepository,
     currentBranch,
@@ -37,7 +39,6 @@ const RepoTopBar = () => {
         await mockPush();
         break;
       case 'sync':
-        // Sync logic
         break;
       default:
         break;
@@ -93,11 +94,28 @@ const RepoTopBar = () => {
               </>
             )}
           </div>
+
           <div className="flex items-center space-x-2">
             {isLoading && (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
             )}
             <RepoActionsDropdown onActionSelect={handleActionSelect} />
+
+            {/* ✅ Deploy button — only shows when a repo is selected */}
+            {selectedRepository && (
+              <button
+                onClick={() => navigate('/workspace/deployments')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px',
+                  background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                  color: '#fff', border: 'none', borderRadius: 8,
+                  cursor: 'pointer', fontWeight: 600, fontSize: 13,
+                }}
+              >
+                🚀 Déployer
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -107,13 +125,11 @@ const RepoTopBar = () => {
         onClose={() => setIsCommitModalOpen(false)}
         onCommit={handleCommit}
       />
-
       <BranchModal
         isOpen={isBranchModalOpen}
         onClose={() => setIsBranchModalOpen(false)}
         onCreateBranch={handleCreateBranch}
       />
-
       <CreateRepositoryModal
         isOpen={isCreateRepoModalOpen}
         onClose={() => setIsCreateRepoModalOpen(false)}

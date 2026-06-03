@@ -427,6 +427,95 @@ app.MapGet("/api/projects/{id}/files/content", async (string id, string path, Ht
     }
 }).RequireAuthorization();
 
+
+
+
+
+
+
+// ── RAILWAY OAuth ───────────────────────────────────────────
+app.MapGet("/api/railway/auth-url", (HttpContext context) =>
+{
+    var clientId = Environment.GetEnvironmentVariable("RAILWAY_CLIENT_ID");
+    var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+    var redirectUri = $"{frontendUrl}/railway/callback";
+    var state = Guid.NewGuid().ToString();
+    var url = $"https://backboard.railway.com/oauth/auth" +
+          $"?client_id={clientId}" +
+          $"&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+          $"&response_type=code" +
+          $"&scope=openid%20email%20profile%20project%3Awrite%20offline_access" +
+          $"&prompt=consent" +
+          $"&state={state}";
+    return Results.Ok(new { authUrl = url, state });
+}).RequireAuthorization();
+
+app.MapPost("/api/railway/token", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+    using var bodyDoc = JsonDocument.Parse(body);
+    var code = bodyDoc.RootElement.GetProperty("code").GetString();
+    var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+    var redirectUri = $"{frontendUrl}/railway/callback";
+
+    var clientId     = Environment.GetEnvironmentVariable("RAILWAY_CLIENT_ID") ?? "";
+    var clientSecret = Environment.GetEnvironmentVariable("RAILWAY_CLIENT_SECRET") ?? "";
+
+    var client = httpClientFactory.CreateClient();
+    var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+
+    var form = new Dictionary<string, string>
+    {
+        ["grant_type"]   = "authorization_code",
+        ["code"]         = code ?? "",
+        ["redirect_uri"] = redirectUri,
+    };
+
+    var resp = await client.PostAsync("https://backboard.railway.com/oauth/token", new FormUrlEncodedContent(form));
+    var json = await resp.Content.ReadAsStringAsync();
+    return Results.Content(json, "application/json", statusCode: (int)resp.StatusCode);
+}).RequireAuthorization();
+// ── DEPLOY proxy ────────────────────────────────────────────
+app.MapPost("/api/deploy/railway", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    var incomingToken = ExtractBearerToken(context);
+    if (incomingToken is null) return Results.Unauthorized();
+
+    using var reader = new StreamReader(context.Request.Body);
+    var body = await reader.ReadToEndAsync();
+
+    var client = httpClientFactory.CreateClient();
+    var request = new HttpRequestMessage(HttpMethod.Post, deployServiceUrl + "/internal/deploy");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+    request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
+    var response = await client.SendAsync(request);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+}).RequireAuthorization();
+
+app.MapGet("/api/deploy/railway/{serviceId}/status", async (string serviceId, string railwayToken, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    var incomingToken = ExtractBearerToken(context);
+    if (incomingToken is null) return Results.Unauthorized();
+
+    var client = httpClientFactory.CreateClient();
+    var request = new HttpRequestMessage(HttpMethod.Get,
+        $"{deployServiceUrl}/internal/deploy/{serviceId}/status?railwayToken={Uri.EscapeDataString(railwayToken)}");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incomingToken);
+
+    var response = await client.SendAsync(request);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+}).RequireAuthorization();
+
+
+
+
+
+
+
 // ── GITHUB SERVICE proxy ─────────────────────────────────
 app.MapGet("/api/github/providers", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
 {

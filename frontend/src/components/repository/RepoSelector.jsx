@@ -4,14 +4,12 @@ import { useGitHubStore } from '../../store/gitHubStore';
 const RepoSelector = () => {
   const { repositories, selectedRepository, isLoading, selectRepository, fetchRepositories } = useGitHubStore();
   const [isOpen, setIsOpen] = useState(false);
+  
+useEffect(() => {
+  fetchRepositories();
+}, []);
 
-  useEffect(() => {
-    if (repositories.length === 0 && !isLoading) {
-      fetchRepositories();
-    }
-  }, [repositories.length, isLoading, fetchRepositories]);
-
-  if (isLoading && repositories.length === 0) {
+  if (isLoading) {
     return (
       <div className="px-4 py-2 text-gray-400 text-sm">Loading repositories...</div>
     );
@@ -38,8 +36,7 @@ const RepoSelector = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-72 bg-gray-800 rounded-md shadow-lg border border-gray-700 z-20 max-h-96 overflow-y-auto">
-          <div className="py-1">
+<div className="absolute bottom-full right-0 mb-2 w-48 bg-gray-800 rounded-md shadow-lg border border-gray-700 z-[9999]">          <div className="py-1">
             {repositories.map((repo) => (
               <button
                 key={repo.id}

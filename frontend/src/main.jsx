@@ -7,7 +7,6 @@ import { assertEnv } from "./utils/env";
 assertEnv();
 
 const root = document.getElementById("root");
-
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <AppRouter />
