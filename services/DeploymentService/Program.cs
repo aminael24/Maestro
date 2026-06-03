@@ -2,46 +2,30 @@ using DeploymentService.Services;
 using DeploymentService.Models;
 using Confluent.Kafka;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var keycloakRealmUrl = Environment.GetEnvironmentVariable("KEYCLOAK_REALM_URL")
-                       ?? "http://keycloak:8080/realms/maestro";
 var kafkaBroker = Environment.GetEnvironmentVariable("KAFKA_BOOTSTRAP_SERVERS") ?? "kafka:9092";
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<RailwayDeployService>();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(opt =>
-    {
-        opt.Authority = keycloakRealmUrl;
-        opt.RequireHttpsMetadata = false;
-        opt.TokenValidationParameters = new TokenValidationParameters { ValidateAudience = false };
-    });
-builder.Services.AddAuthorization();
-
 var app = builder.Build();
-app.UseAuthentication();
-app.UseAuthorization();
 
-// POST /internal/deploy
+// POST /internal/deploy  — called by the API Gateway proxy
 app.MapPost("/internal/deploy", async (DeployRequest req, RailwayDeployService svc) =>
 {
     try
     {
         var result = await svc.DeployAsync(req);
 
-        // Publish deploy.started to Kafka
         await PublishKafkaEvent(kafkaBroker, "deploy.started", new
         {
-            userId = req.UserId,
+            userId      = req.UserId,
             serviceName = req.ServiceName,
-            serviceUrl = result.ServiceUrl,
-            serviceId = result.ServiceId,
-            timestamp = DateTime.UtcNow
+            serviceUrl  = result.ServiceUrl,
+            serviceId   = result.ServiceId,
+            timestamp   = DateTime.UtcNow
         });
 
         return Results.Ok(result);
@@ -56,20 +40,73 @@ app.MapPost("/internal/deploy", async (DeployRequest req, RailwayDeployService s
 app.MapGet("/internal/deploy/{serviceId}/status",
     async (string serviceId, string railwayToken, RailwayDeployService svc) =>
 {
-    var status = await svc.GetDeployStatusAsync(serviceId, railwayToken);
-
-    // If just went live, fire deploy.completed event
-    if (status.Status == "success" && status.Url != null)
+    try
     {
-        await PublishKafkaEvent(kafkaBroker, "deploy.completed", new
-        {
-            serviceId,
-            serviceUrl = status.Url,
-            timestamp = DateTime.UtcNow
-        });
-    }
+        var status = await svc.GetDeployStatusAsync(serviceId, railwayToken);
 
-    return Results.Ok(status);
+        if (status.Status == "success" && status.Url != null)
+        {
+            await PublishKafkaEvent(kafkaBroker, "deploy.completed", new
+            {
+                serviceId,
+                serviceUrl = status.Url,
+                timestamp  = DateTime.UtcNow
+            });
+        }
+
+        return Results.Ok(status);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
+
+// Background: consume github.push events and auto-deploy
+_ = Task.Run(async () =>
+{
+    var config = new ConsumerConfig
+    {
+        BootstrapServers = kafkaBroker,
+        GroupId          = "deploy-service-github-push",
+        AutoOffsetReset  = AutoOffsetReset.Latest,
+    };
+    using var consumer = new ConsumerBuilder<Ignore, string>(config).Build();
+    consumer.Subscribe("github.push");
+
+    while (true)
+    {
+        try
+        {
+            var msg = consumer.Consume(TimeSpan.FromSeconds(5));
+            if (msg?.Message?.Value == null) continue;
+
+            using var doc = JsonDocument.Parse(msg.Message.Value);
+            var root      = doc.RootElement;
+            var repoUrl   = root.TryGetProperty("repoUrl",   out var r) ? r.GetString() : null;
+            var branch    = root.TryGetProperty("branch",    out var b) ? b.GetString() : "main";
+            var projectId = root.TryGetProperty("projectId", out var p) ? p.GetString() : null;
+
+            if (string.IsNullOrWhiteSpace(repoUrl)) continue;
+
+            Console.WriteLine($"[Deploy] github.push received for {repoUrl} branch={branch}");
+
+            // Emit deploy.started so the frontend can pick it up via polling
+            await PublishKafkaEvent(kafkaBroker, "deploy.started", new
+            {
+                projectId,
+                repoUrl,
+                branch,
+                source    = "github.push",
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Deploy Consumer] Error: {ex.Message}");
+            await Task.Delay(3000);
+        }
+    }
 });
 
 app.Run();

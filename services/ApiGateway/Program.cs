@@ -652,6 +652,43 @@ app.MapGet("/api/github/repositories/{projectId}", async (string projectId, Http
         return Results.Problem("GitHub Service unreachable", statusCode: 502);
     }
 }).RequireAuthorization();
+app.MapPost("/api/github/repositories/{projectId}/commit", async (string projectId, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{gitHubServiceUrl}/api/repositories/{projectId}/commit")
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json")
+        };
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service commit failed: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapPost("/api/github/repositories/{projectId}/push", async (string projectId, HttpContext context, IHttpClientFactory httpClientFactory) =>
+{
+    try
+    {
+        var client = httpClientFactory.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{gitHubServiceUrl}/api/repositories/{projectId}/push");
+        var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Content(content, "application/json", statusCode: (int)response.StatusCode);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[PROXY ERROR] GitHub Service push failed: {ex.Message}");
+        return Results.Problem("GitHub Service unreachable", statusCode: 502);
+    }
+}).RequireAuthorization();
 
 app.MapPost("/api/github/repositories", async (HttpContext context, IHttpClientFactory httpClientFactory) =>
 {

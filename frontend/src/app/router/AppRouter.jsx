@@ -14,6 +14,7 @@ import { isDevMode, env } from "../../utils/env";
 import { getMe } from "../../services/authService";
 import DeploymentsPage from "../../components/Workspace/DeploymentsPage";
 import RailwayCallbackPage from '../../pages/Auth/RailwayCallbackPage';
+import DeployConfigPage from "../../pages/Workspace/DeployConfigPage";
 
 // ═══════════════════════════════════════════════════════════════
 //  WorkspacePage – wrapper du layout principal pour les routes
@@ -192,6 +193,8 @@ export default function AppRouter() {
           <Route path="ai-generator" element={<AiEditorPage />} />
           <Route path="projects/:projectId" element={<ProjectWorkspacePage />} />
           <Route path="deployments" element={<DeploymentsPage />} />
+          <Route path="deploy-config" element={<DeployConfigPage />} />
+
         </Route>
 
         {/* Catch-all : tout chemin inconnu retourne sur la landing. */}

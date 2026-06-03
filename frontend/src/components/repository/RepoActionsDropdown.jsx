@@ -17,7 +17,8 @@ const RepoActionsDropdown = ({ onActionSelect }) => {
           console.log("ACTIONS BUTTON CLICKED");
           setIsOpen(!isOpen);
         }}
-        className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-md flex items-center space-x-2 transition"
+      className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-md text-sm flex items-center space-x-2 transition"
+      
       >
         <span>Actions</span>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +26,8 @@ const RepoActionsDropdown = ({ onActionSelect }) => {
         </svg>
       </button>
       {isOpen && (
-<div className="absolute bottom-full right-0 mb-2 w-48 bg-gray-800 rounded-md shadow-lg border border-gray-700 z-[9999]">          <div className="py-1">
+<div   className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-md text-sm flex items-center space-x-2 transition"
+      >        <div className="py-1">
             <button
               onClick={() => handleActionClick('create')}
               className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition"

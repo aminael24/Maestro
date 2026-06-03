@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api } from "../../services/api";
 import { useAiStore } from "../../store/useAiStore";
+import { useGitHubStore } from "../../store/gitHubStore";
 import AiFileTree from "../../components/Sidebar/AiFileTree";
 import CodeEditor from "../../components/Workspace/CodeEditor";
 import ChatBox from "../../components/Workspace/ChatBox";
 import Terminal from "../../components/Workspace/Terminal";
+import RepoGate from "../../components/repository/RepoGate";
+import RepoTopBar from "../../components/repository/RepoTopBar";
 
 const ProjectWorkspacePage = () => {
   const { projectId } = useParams();
-  const navigate = useNavigate();
   const [project, setProject] = useState(null);
-  const { resetProject, setFiles } = useAiStore();
+  const { resetProject } = useAiStore();
+  const { isConnected } = useGitHubStore();
 
   useEffect(() => {
     resetProject();
@@ -71,7 +74,7 @@ const ProjectWorkspacePage = () => {
       style={{
         display: "grid",
         gridTemplateColumns: "260px 1fr 360px",
-        gridTemplateRows: "1fr 250px",
+        gridTemplateRows: isConnected ? "auto 1fr 250px" : "1fr 250px",
         height: "100vh",
         maxHeight: "100vh",
         overflow: "hidden",
@@ -79,10 +82,21 @@ const ProjectWorkspacePage = () => {
         fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
       }}
     >
+      {/* GitHub OAuth gate — shows connect modal when not connected */}
+      <RepoGate />
+
+      {/* GitHub TopBar — only visible when connected */}
+      {isConnected && (
+        <div style={{ gridColumn: "1 / -1", zIndex: 10 }}>
+          <RepoTopBar />
+        </div>
+      )}
+
+      {/* Sidebar */}
       <aside
         style={{
           gridColumn: "1",
-          gridRow: "1 / 3",
+          gridRow: isConnected ? "2 / 4" : "1 / 3",
           background: "linear-gradient(180deg, #0d1f2d 0%, #0f1923 100%)",
           borderRight: "1px solid rgba(255,255,255,0.06)",
           overflowY: "auto",
@@ -91,10 +105,11 @@ const ProjectWorkspacePage = () => {
         <AiFileTree projectType={project?.type} />
       </aside>
 
+      {/* Code editor */}
       <main
         style={{
           gridColumn: "2",
-          gridRow: "1",
+          gridRow: isConnected ? "2" : "1",
           display: "flex",
           flexDirection: "column",
           background: "#111d27",
@@ -104,10 +119,11 @@ const ProjectWorkspacePage = () => {
         <CodeEditor />
       </main>
 
+      {/* Terminal */}
       <div
         style={{
           gridColumn: "2",
-          gridRow: "2",
+          gridRow: isConnected ? "3" : "2",
           borderTop: "1px solid rgba(255,255,255,0.06)",
           padding: "8px",
           background: "#0d1117",
@@ -116,16 +132,16 @@ const ProjectWorkspacePage = () => {
         <Terminal projectId={projectId} projectType={project?.type} />
       </div>
 
+      {/* Chat */}
       <section
         style={{
           gridColumn: "3",
-          gridRow: "1 / 3",
+          gridRow: isConnected ? "2 / 4" : "1 / 3",
           borderLeft: "1px solid rgba(255,255,255,0.06)",
           background: "#0d1a24",
           overflow: "hidden",
         }}
       >
-        {/* ✅ MODIFIÉ : ajout de projectType */}
         <ChatBox projectId={projectId} projectType={project?.type} />
       </section>
     </div>

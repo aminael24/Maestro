@@ -322,6 +322,7 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       DATABASE_URL: Host=github-db;Port=5432;Database=github_db;Username=admin;Password=admin_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:90920
     ports:
       - "5101:8080"
     networks:

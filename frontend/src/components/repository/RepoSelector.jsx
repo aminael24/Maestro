@@ -36,7 +36,9 @@ useEffect(() => {
       </button>
 
       {isOpen && (
-<div className="absolute bottom-full right-0 mb-2 w-48 bg-gray-800 rounded-md shadow-lg border border-gray-700 z-[9999]">          <div className="py-1">
+<div
+    className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-md text-sm flex items-center space-x-2 transition"
+      >       <div className="py-1">
             {repositories.map((repo) => (
               <button
                 key={repo.id}

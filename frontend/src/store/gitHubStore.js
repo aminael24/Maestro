@@ -10,6 +10,8 @@ const deriveRepoName = (remoteUrl) => {
   return candidate.replace(/\.git$/, '');
 };
 
+// The DB returns { id, projectId, remoteUrl, provider, ... }
+// We normalise so the UI always has name + description
 const normalizeRepository = (repo) => ({
   ...repo,
   name: repo.name || deriveRepoName(repo.remoteUrl),
@@ -22,7 +24,7 @@ export const useGitHubStore = create((set, get) => ({
   isConnected: false,
   user: null,
   repositories: [],
-  selectedRepository: null,
+  selectedRepository: null, // shape: { id, projectId, name, remoteUrl, ... }
   currentBranch: 'main',
   syncStatus: 'idle',
   isLoading: false,
@@ -45,17 +47,11 @@ export const useGitHubStore = create((set, get) => ({
       await new Promise((resolve) => setTimeout(resolve, 1000));
       set({
         isConnected: true,
-        user: {
-          id: 'user-123',
-          name: 'Dev User',
-          username: 'devuser',
-          avatar: 'https://api.github.com/users/torvalds/avatar_url',
-        },
+        user: { id: 'user-123', name: 'Dev User', username: 'devuser' },
         isLoading: false,
       });
       return null;
     }
-
     set({ isLoading: true, error: null });
     try {
       const state = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -76,24 +72,18 @@ export const useGitHubStore = create((set, get) => ({
       await get().fetchRepositories();
       return;
     }
-
     set({ isLoading: true, error: null });
     const expectedState = sessionStorage.getItem('github_oauth_state');
     if (!expectedState || expectedState !== state) {
       set({ isLoading: false, error: 'OAuth state validation failed.' });
       throw new Error('OAuth state validation failed.');
     }
-
     try {
       const redirectUri = getRedirectUri();
       const tokenResponse = await gitHubApi.exchangeCode('github', code, redirectUri);
-      if (!tokenResponse?.accessToken) {
-        throw new Error('GitHub did not return an access token.');
-      }
-
-      set({ accessToken: tokenResponse.accessToken, isConnected: true, isLoading: false , repositories: [] });
+      if (!tokenResponse?.accessToken) throw new Error('GitHub did not return an access token.');
+      set({ accessToken: tokenResponse.accessToken, isConnected: true, isLoading: false, repositories: [] });
       sessionStorage.removeItem('github_oauth_state');
-
     } catch (error) {
       set({ isLoading: false, error: error instanceof Error ? error.message : String(error) });
       throw error;
@@ -102,64 +92,55 @@ export const useGitHubStore = create((set, get) => ({
 
   disconnect: () => {
     sessionStorage.removeItem('github_oauth_state');
-    set({
-      isConnected: false,
-      user: null,
-      repositories: [],
-      selectedRepository: null,
-      currentBranch: 'main',
-      syncStatus: 'idle',
-      accessToken: null,
-    });
+    set({ isConnected: false, user: null, repositories: [], selectedRepository: null, currentBranch: 'main', syncStatus: 'idle', accessToken: null });
   },
 
- fetchRepositories: async () => {
-  set({ isLoading: true, error: null });
-
-  try {
-    const repositories = await gitHubApi.getSavedRepositories();
-
-    set({
-      repositories: Array.isArray(repositories)
-        ? repositories.map(normalizeRepository)
-        : [],
-      isLoading: false,
-      error: null,
-    });
-  } catch (error) {
-    set({
-      repositories: [],
-      isLoading: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-},
+  fetchRepositories: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const repositories = await gitHubApi.getSavedRepositories();
+      set({
+        repositories: Array.isArray(repositories) ? repositories.map(normalizeRepository) : [],
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      set({ repositories: [], isLoading: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
 
   selectRepository: (repo) => {
     set({ selectedRepository: repo, currentBranch: 'main', syncStatus: 'idle' });
   },
 
+  // ── createRepository: saves projectId on the returned repo object ──
   createRepository: async ({ name, description, isPrivate }) => {
     set({ isLoading: true, error: null });
-
     if (isDevMode) {
       await gitHubServiceMock.createRepository('github', 'project-123', 'mock-token', name, description, isPrivate);
       await get().fetchRepositories();
       set({ isLoading: false });
       return;
     }
-
     try {
       const accessToken = get().accessToken;
       if (!accessToken) throw new Error('GitHub access token is required to create a repository.');
 
+      // Generate the projectId that will be stored in github-service DB
       const projectId = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      await gitHubApi.createRepository('github', projectId, accessToken, name.trim(), description.trim(), isPrivate);
+      const metadata = await gitHubApi.createRepository('github', projectId, accessToken, name.trim(), description.trim(), isPrivate);
+
+      // Refresh repo list from DB (which now has projectId stored)
       await get().fetchRepositories();
-      const createdRepo = get().repositories.find((repo) => repo.name === name.trim() || repo.remoteUrl?.endsWith(`/${name.trim()}.git`));
-      if (createdRepo) {
-        get().setSelectedRepository(createdRepo);
-      }
+
+      // Find the newly created repo and auto-select it
+      // The DB record has projectId; after normalisation it's on the repo object
+      const all = get().repositories;
+      const created = all.find(
+        (r) => r.projectId === projectId || r.name === name.trim() || r.remoteUrl?.endsWith(`/${name.trim()}.git`)
+      );
+      if (created) set({ selectedRepository: created });
+
       set({ isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: error instanceof Error ? error.message : String(error) });
@@ -167,50 +148,72 @@ export const useGitHubStore = create((set, get) => ({
     }
   },
 
+  // ── Real commit: uses selectedRepository.projectId from DB ──
+  commit: async (message) => {
+    const { selectedRepository } = get();
+    // projectId comes from the DB record (Guid stored as string)
+    const repoProjectId = selectedRepository?.projectId;
+    if (!repoProjectId) {
+      set({ error: 'No repository projectId — create or select a repository first.' });
+      return;
+    }
+    set({ isLoading: true, syncStatus: 'syncing', error: null });
+    try {
+      await gitHubApi.commitRepository(repoProjectId, message);
+      set({ syncStatus: 'success', isLoading: false });
+      setTimeout(() => set({ syncStatus: 'idle' }), 2500);
+    } catch (error) {
+      set({ isLoading: false, syncStatus: 'idle', error: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  },
+
+  // ── Real push: uses selectedRepository.projectId from DB ──
+  push: async () => {
+    const { selectedRepository } = get();
+    const repoProjectId = selectedRepository?.projectId;
+    if (!repoProjectId) {
+      set({ error: 'No repository projectId — create or select a repository first.' });
+      return;
+    }
+    set({ syncStatus: 'syncing', error: null });
+    try {
+      await gitHubApi.pushRepository(repoProjectId);
+      set({ syncStatus: 'success' });
+      setTimeout(() => set({ syncStatus: 'idle' }), 2500);
+    } catch (error) {
+      set({ syncStatus: 'idle', error: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  },
+
+  // ── Mock (dev only) ──
   mockFetchRepositories: async () => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((r) => setTimeout(r, 800));
     set({
       repositories: [
-        {
-          id: 'repo-1',
-          name: 'maestro-frontend',
-          description: 'Maestro frontend application',
-          url: 'https://github.com/user/maestro-frontend',
-          private: false,
-        },
-        {
-          id: 'repo-2',
-          name: 'maestro-backend',
-          description: 'Maestro backend services',
-          url: 'https://github.com/user/maestro-backend',
-          private: true,
-        },
+        { id: 'repo-1', projectId: 'proj-1', name: 'maestro-frontend', description: 'Frontend', remoteUrl: 'https://github.com/user/maestro-frontend.git', private: false },
+        { id: 'repo-2', projectId: 'proj-2', name: 'maestro-backend', description: 'Backend', remoteUrl: 'https://github.com/user/maestro-backend.git', private: true },
       ],
       isLoading: false,
     });
   },
-
-  mockSelectRepository: (repo) => {
-    set({ selectedRepository: repo, currentBranch: 'main', syncStatus: 'idle' });
-  },
-
+  mockSelectRepository: (repo) => set({ selectedRepository: repo, currentBranch: 'main', syncStatus: 'idle' }),
   mockCreateBranch: async (branchName) => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((r) => setTimeout(r, 800));
     set({ currentBranch: branchName, isLoading: false });
   },
-
   mockCommit: async (message) => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
     set({ syncStatus: 'success', isLoading: false });
     setTimeout(() => set({ syncStatus: 'idle' }), 2000);
   },
-
   mockPush: async () => {
     set({ syncStatus: 'syncing' });
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await new Promise((r) => setTimeout(r, 1200));
     set({ syncStatus: 'success' });
     setTimeout(() => set({ syncStatus: 'idle' }), 2000);
   },

@@ -42,14 +42,15 @@ public class ProviderFacade : IProviderFacade
         var gitProvider = GetProvider(provider);
         var metadata = await gitProvider.CreateRepositoryAsync(accessToken, name, description, isPrivate);
 
-        // Unify flow: create/update repository in DB
+        var localPath = $"/app/projects/{projectId}";
+
         var repository = new Domain.Entities.Repository
         {
             Id = Guid.NewGuid(),
             ProjectId = projectId,
             Provider = provider,
             RemoteUrl = metadata.CloneUrl,
-            LocalPath = $"/app/projects/{projectId}", // Assuming a path, can be configured
+            LocalPath = localPath,
             DefaultBranch = "main",
             IsInitialized = false,
             CreatedAt = DateTime.UtcNow,
@@ -57,10 +58,22 @@ public class ProviderFacade : IProviderFacade
 
         await _repositoryStore.CreateOrUpdateAsync(repository);
 
-        // Initialize git repo
-        var initResult = await _gitService.InitRepoAsync(repository.LocalPath);
+        // Init git repo
+        var initResult = await _gitService.InitRepoAsync(localPath);
         if (initResult.Success)
         {
+            // Set git identity so commits work
+            await _gitService.RunConfigAsync(localPath, "user.email", "maestro@app.local");
+            await _gitService.RunConfigAsync(localPath, "user.name", "Maestro");
+
+            // Add the remote using the token-authenticated URL
+            // Format: https://<token>@github.com/user/repo.git
+            var authenticatedUrl = metadata.CloneUrl.Replace(
+                "https://",
+                $"https://{accessToken}@"
+            );
+            await _gitService.AddRemoteAsync(localPath, "origin", authenticatedUrl);
+
             repository.IsInitialized = true;
             await _repositoryStore.SaveChangesAsync();
         }

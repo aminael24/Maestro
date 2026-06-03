@@ -57,3 +57,22 @@ export async function getSavedRepository(projectId) {
     apiUtils.handleError(error);
   }
 }
+
+// ── Real commit & push ──────────────────────────────────────────
+export async function commitRepository(projectId, message) {
+  try {
+    const response = await api.post(`${GITHUB_PREFIX}/repositories/${projectId}/commit`, { message });
+    return response.data;
+  } catch (error) {
+    apiUtils.handleError(error);
+  }
+}
+
+export async function pushRepository(projectId) {
+  try {
+    const response = await api.post(`${GITHUB_PREFIX}/repositories/${projectId}/push`);
+    return response.data;
+  } catch (error) {
+    apiUtils.handleError(error);
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGitHubStore } from '../../store/gitHubStore';
+import { isDevMode } from '../../utils/env';
 import RepoActionsDropdown from './RepoActionsDropdown';
 import RepoSelector from './RepoSelector';
 import CommitModal from './CommitModal';
@@ -8,13 +9,18 @@ import CreateRepositoryModal from './CreateRepositoryModal';
 import { useNavigate } from 'react-router-dom';
 
 const RepoTopBar = () => {
-  const navigate = useNavigate(); // ✅ moved inside the component
+  const navigate = useNavigate();
   const {
     selectedRepository,
     currentBranch,
     syncStatus,
     isLoading,
+    error,
     createRepository,
+    // real actions
+    commit,
+    push,
+    // mock actions (dev only)
     mockCommit,
     mockCreateBranch,
     mockPush,
@@ -36,7 +42,12 @@ const RepoTopBar = () => {
         setIsCommitModalOpen(true);
         break;
       case 'push':
-        await mockPush();
+        // Use real push in production, mock in dev
+        if (isDevMode) {
+          await mockPush();
+        } else {
+          await push();
+        }
         break;
       case 'sync':
         break;
@@ -46,7 +57,11 @@ const RepoTopBar = () => {
   };
 
   const handleCommit = async (message) => {
-    await mockCommit(message);
+    if (isDevMode) {
+      await mockCommit(message);
+    } else {
+      await commit(message);
+    }
     setIsCommitModalOpen(false);
   };
 
@@ -96,15 +111,20 @@ const RepoTopBar = () => {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Show push error inline */}
+            {error && (
+              <span style={{ color: '#f87171', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                ⚠ {error}
+              </span>
+            )}
             {isLoading && (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
             )}
             <RepoActionsDropdown onActionSelect={handleActionSelect} />
 
-            {/* ✅ Deploy button — only shows when a repo is selected */}
             {selectedRepository && (
               <button
-                onClick={() => navigate('/workspace/deployments')}
+                onClick={() => navigate('/workspace/deploy-config')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '6px 14px',
@@ -113,7 +133,7 @@ const RepoTopBar = () => {
                   cursor: 'pointer', fontWeight: 600, fontSize: 13,
                 }}
               >
-                🚀 Déployer
+                 Déployer
               </button>
             )}
           </div>
