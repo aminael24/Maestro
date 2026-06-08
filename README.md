@@ -1,4 +1,4 @@
-# Maestro – Projet Corrigé
+# Maestro – Projet 
 
 ## Architecture Finale
 
